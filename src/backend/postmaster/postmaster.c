@@ -953,6 +953,11 @@ PostmasterMain(int argc, char *argv[])
 	 * Now that loadable modules have had their chance to request additional
 	 * shared memory, determine the value of any runtime-computed GUCs that
 	 * depend on the amount of shared memory required.
+	 *
+	 * 现在可加载模块有机会请求额外的
+	 * 共享内存，确定任何运行时计算的 GUC 的值
+	 * 取决于所需的共享内存量。
+	 * GUC (Grand Unified Configuration): 大统一配置
 	 */
 	InitializeShmemGUCs();
 

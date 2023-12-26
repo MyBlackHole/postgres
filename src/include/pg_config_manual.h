@@ -178,6 +178,7 @@
 #define DEFAULT_CHECKPOINT_FLUSH_AFTER 0
 #endif
 /* upper limit for all three variables */
+// 最大刷写回写挂起请求数
 #define WRITEBACK_MAX_PENDING_FLUSHES 256
 
 /*

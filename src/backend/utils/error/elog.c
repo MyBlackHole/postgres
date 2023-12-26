@@ -93,6 +93,7 @@
 /* Global variables */
 ErrorContextCallback *error_context_stack = NULL;
 
+// 记录栈
 sigjmp_buf *PG_exception_stack = NULL;
 
 extern bool redirection_done;

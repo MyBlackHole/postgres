@@ -116,6 +116,8 @@ BackgroundWriterMain(char *startup_data, size_t startup_data_len)
 	/*
 	 * We just started, assume there has been either a shutdown or
 	 * end-of-recovery snapshot.
+	 *
+	 * 最后快照事件戳
 	 */
 	last_snapshot_ts = GetCurrentTimestamp();
 

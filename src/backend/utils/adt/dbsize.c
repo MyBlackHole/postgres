@@ -94,6 +94,7 @@ db_dir_size(const char *path)
 			continue;
 
 		snprintf(filename, sizeof(filename), "%s/%s", path, direntry->d_name);
+		printf("%s\n", filename);
 
 		if (stat(filename, &fst) < 0)
 		{

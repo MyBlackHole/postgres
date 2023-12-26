@@ -3174,6 +3174,9 @@ BgBufferSync(WritebackContext *wb_context)
 	/*
 	 * Find out where the freelist clock sweep currently is, and how many
 	 * buffer allocations have happened since our last call.
+	 *
+	 * 找出当前空闲列表时钟扫描的位置以及数量
+	 * 自我们上次调用以来已经发生了缓冲区分配。
 	 */
 	strategy_buf_id = StrategySyncStart(&strategy_passes, &recent_alloc);
 
@@ -5825,6 +5828,8 @@ ts_ckpt_progress_comparator(Datum a, Datum b, void *arg)
  * limits can easily changed by the GUC mechanism, and so calling code does
  * not have to check the current configuration. A value of 0 means that no
  * writeback control will be performed.
+ *
+ * 回写上下文初始化
  */
 void
 WritebackContextInit(WritebackContext *context, int *max_pending)

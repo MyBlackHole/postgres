@@ -297,9 +297,11 @@ typedef struct PendingWriteback
 typedef struct WritebackContext
 {
 	/* pointer to the max number of writeback requests to coalesce */
+	// 最大回写挂起请求数量
 	int		   *max_pending;
 
 	/* current number of pending writeback requests */
+	// 当前挂起的回写请求数
 	int			nr_pending;
 
 	/* pending requests */

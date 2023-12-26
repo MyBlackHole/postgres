@@ -68,17 +68,25 @@
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
 /* Our shared memory area */
+// 共享内存区域
 typedef struct ProcArrayStruct
 {
+	// 有效条目
 	int			numProcs;		/* number of valid procs entries */
+	// 最大(分配)条目数量
 	int			maxProcs;		/* allocated size of procs array */
 
 	/*
 	 * Known assigned XIDs handling
+	 * 已知已分配的 XID 处理
 	 */
+	// 最大已分配的事务 id
 	int			maxKnownAssignedXids;	/* allocated size of array */
+	// 当前事务 id
 	int			numKnownAssignedXids;	/* current # of valid entries */
+	// 最旧事务 id
 	int			tailKnownAssignedXids;	/* index of oldest valid element */
+	// 最新事务 id + 1
 	int			headKnownAssignedXids;	/* index of newest element, + 1 */
 
 	/*
@@ -371,6 +379,8 @@ static void GlobalVisUpdateApply(ComputeXidHorizonsResult *horizons);
 
 /*
  * Report shared-memory space needed by CreateSharedProcArray.
+ *
+ * 计算大小
  */
 Size
 ProcArrayShmemSize(void)
@@ -413,6 +423,7 @@ ProcArrayShmemSize(void)
 
 /*
  * Initialize the shared PGPROC array during postmaster startup.
+ * 在 postmaster 启动期间初始化共享 PGPROC 数组。
  */
 void
 CreateSharedProcArray(void)

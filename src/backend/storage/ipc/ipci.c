@@ -365,6 +365,9 @@ CreateOrAttachShmemStructs(void)
  *
  * This function initializes runtime-computed GUCs related to the amount of
  * shared memory required for the current configuration.
+ *
+ * 该函数初始化与数量相关的运行时计算的 GUC
+ * 当前配置所需的共享内存。
  */
 void
 InitializeShmemGUCs(void)
@@ -376,6 +379,7 @@ InitializeShmemGUCs(void)
 
 	/*
 	 * Calculate the shared memory size and round up to the nearest megabyte.
+	 * 计算共享内存大小并四舍五入到最接近的兆字节。
 	 */
 	size_b = CalculateShmemSize(NULL);
 	size_mb = add_size(size_b, (1024 * 1024) - 1) / (1024 * 1024);
@@ -385,7 +389,9 @@ InitializeShmemGUCs(void)
 
 	/*
 	 * Calculate the number of huge pages required.
+	 * 计算所需的大页数
 	 */
+	// 获取大页大小
 	GetHugePageSize(&hp_size, NULL);
 	if (hp_size != 0)
 	{
