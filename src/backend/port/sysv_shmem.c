@@ -695,6 +695,8 @@ AnonymousShmemDetach(int status, Datum arg)
  * we do not fail upon collision with foreign shmem segments.  The idea here
  * is to detect and re-use keys that may have been assigned by a crashed
  * postmaster or backend.
+ *
+ * 创建共享内存 (一次性分配一段)
  */
 PGShmemHeader *
 PGSharedMemoryCreate(Size size,

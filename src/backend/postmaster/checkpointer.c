@@ -897,9 +897,11 @@ CheckpointerShmemSize(void)
 void
 CheckpointerShmemInit(void)
 {
+	// 获取 size
 	Size		size = CheckpointerShmemSize();
 	bool		found;
 
+	// 分配共享内存
 	CheckpointerShmem = (CheckpointerShmemStruct *)
 		ShmemInitStruct("Checkpointer Data",
 						size,

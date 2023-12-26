@@ -155,6 +155,7 @@ int			min_dynamic_shared_memory;
  * silently return false.
  *-----
  */
+// 动态分配共享内存
 bool
 dsm_impl_op(dsm_op op, dsm_handle handle, Size request_size,
 			void **impl_private, void **mapped_address, Size *mapped_size,
@@ -787,6 +788,16 @@ dsm_impl_windows(dsm_op op, dsm_handle handle, Size request_size,
  * synchronize the contents to disk even if nothing is being paged out,
  * which will not serve us well.  The user can relocate the pg_dynshmem
  * directory to a ramdisk to avoid this problem, if available.
+ *
+ * 支持基于 mmap 的共享内存的操作系统原语。
+ *                                                                       
+ * 称其为“共享内存”有点用词不当，因为
+ * 我们真正要做的是创建一堆文件并将它们映射到
+ * 我们的地址空间。 操作系统可能觉得有必要
+ * 即使没有任何内容被调出，也将内容同步到磁盘，
+ * 这对我们没有好处。 用户可以重新定位 pg_dynshmem
+ * 目录到 ramdisk 以避免此问题（如果有）。
+ *
  */
 static bool
 dsm_impl_mmap(dsm_op op, dsm_handle handle, Size request_size,
@@ -804,6 +815,7 @@ dsm_impl_mmap(dsm_op op, dsm_handle handle, Size request_size,
 	/* Handle teardown cases. */
 	if (op == DSM_OP_DETACH || op == DSM_OP_DESTROY)
 	{
+		// munmap: 删除指定地址区的内存映射
 		if (*mapped_address != NULL
 			&& munmap(*mapped_address, *mapped_size) != 0)
 		{

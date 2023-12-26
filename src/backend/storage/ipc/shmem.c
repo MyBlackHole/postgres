@@ -96,6 +96,8 @@ static HTAB *ShmemIndex = NULL; /* primary index hashtable for shmem */
  * Note: the argument should be declared "PGShmemHeader *seghdr",
  * but we use void to avoid having to include ipc.h in shmem.h.
  */
+
+// 初始化全局共享内存
 void
 InitShmemAccess(void *seghdr)
 {

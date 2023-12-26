@@ -85,6 +85,7 @@ RequestAddinShmemSpace(Size size)
  *
  * If num_semaphores is not NULL, it will be set to the number of semaphores
  * required.
+ * 计算共享内存块的大小 
  */
 Size
 CalculateShmemSize(int *num_semaphores)

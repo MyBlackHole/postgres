@@ -113,6 +113,7 @@ db_dir_size(const char *path)
 
 /*
  * calculate size of database in all tablespaces
+ * 计算所有表空间中数据库的大小
  */
 static int64
 calculate_database_size(Oid dbOid)
