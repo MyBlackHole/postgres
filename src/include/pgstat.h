@@ -85,6 +85,8 @@ typedef enum SessionEndType
 /* ----------
  * The data type used for counters.
  * ----------
+ *
+ *  用于数据统计的数据类型
  */
 typedef int64 PgStat_Counter;
 

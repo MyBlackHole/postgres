@@ -1266,6 +1266,7 @@ AtEOXact_Parallel(bool isCommit)
 
 /*
  * Main entrypoint for parallel workers.
+ * 并行工作人员的主要入口点。
  */
 void
 ParallelWorkerMain(Datum main_arg)

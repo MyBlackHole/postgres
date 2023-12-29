@@ -140,6 +140,10 @@ int			max_parallel_maintenance_workers = 2;
  *
  * MaxBackends is computed by PostmasterMain after modules have had a chance to
  * register background workers.
+ *
+ * 共享内存结构大小的主要决定因素。
+ *
+ * MaxBackends 是在模块有机会注册后台工作人员后由 PostmasterMain 计算的。
  */
 int			NBuffers = 16384;
 int			MaxConnections = 100;

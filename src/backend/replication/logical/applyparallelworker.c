@@ -852,6 +852,7 @@ pa_shutdown(int code, Datum arg)
 
 /*
  * Parallel apply worker entry point.
+ * 并行应用工作线程入口点。
  */
 void
 ParallelApplyWorkerMain(Datum main_arg)

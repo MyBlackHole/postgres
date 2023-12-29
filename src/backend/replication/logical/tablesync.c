@@ -1690,6 +1690,7 @@ run_tablesync_worker()
 }
 
 /* Logical Replication Tablesync worker entry point */
+/* 逻辑复制表同步工作线程入口点 */
 void
 TablesyncWorkerMain(Datum main_arg)
 {

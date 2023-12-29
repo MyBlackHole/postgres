@@ -253,6 +253,7 @@ close_walfile(StreamCtl *stream, XLogRecPtr pos)
 
 /*
  * Check if a timeline history file exists.
+ * 校验时间线历史文件是否存在
  */
 static bool
 existsTimeLineHistoryFile(StreamCtl *stream)
@@ -299,6 +300,7 @@ writeTimeLineHistoryFile(StreamCtl *stream, char *filename, char *content)
 		return false;
 	}
 
+	// 写
 	if ((int) stream->walmethod->ops->write(f, content, size) != size)
 	{
 		pg_log_error("could not write timeline history file \"%s\": %s",
@@ -448,6 +450,8 @@ CheckServerVersionForStreaming(PGconn *conn)
  * otherwise only when the WAL file is closed.
  *
  * Note: The WAL location *must* be at a log segment start!
+ *
+ * 接收从指定位置开始的日志流。
  */
 bool
 ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
@@ -460,6 +464,8 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 	/*
 	 * The caller should've checked the server version already, but doesn't do
 	 * any harm to check it here too.
+	 *
+	 * 验证服务器版本
 	 */
 	if (!CheckServerVersionForStreaming(conn))
 		return false;
@@ -474,6 +480,15 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 	 * replica. People shouldn't include generic names in
 	 * synchronous_standby_names, but we've protected them against it so far,
 	 * so let's continue to do so unless specifically requested.
+	 *
+	 * 决定是否要报告齐平位置。
+	 * 如果我们报告刷新位置，主节点将知道我们可能会重新请求什么 WAL，
+	 * 然后它可以安全地删除旧的 WAL。
+	 * 当我们使用插槽时，我们必须始终这样做。
+	 * 
+	 * 报告刷新位置使一个副本有资格成为同步副本。
+	 * 人们不应该在 synchronous_standby_names(同步备用名称) 中包含通用名称，但到目前为止我们已经保护他们免受这种情况的影响，
+	 * 因此，除非有特别要求，否则我们将继续这样做。
 	 */
 	if (stream->replication_slot != NULL)
 	{
@@ -522,6 +537,8 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 	/*
 	 * initialize flush position to starting point, it's the caller's
 	 * responsibility that that's sane.
+	 *
+	 * 将刷新位置初始化为起始点，这是调用者的责任，这是理智的。
 	 */
 	lastFlushPosition = stream->startpos;
 
@@ -535,6 +552,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		 */
 		if (!existsTimeLineHistoryFile(stream))
 		{
+			// 获取时间线历史
 			snprintf(query, sizeof(query), "TIMELINE_HISTORY %u", stream->timeline);
 			res = PQexec(conn, query);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -557,6 +575,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 			}
 
 			/* Write the history file to disk */
+			/* 将历史文件写入磁盘 */
 			writeTimeLineHistoryFile(stream,
 									 PQgetvalue(res, 0, 0),
 									 PQgetvalue(res, 0, 1));
@@ -572,6 +591,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 			return true;
 
 		/* Initiate the replication stream at specified location */
+		/* 在指定位置启动复制流 */
 		snprintf(query, sizeof(query), "START_REPLICATION %s%X/%X TIMELINE %u",
 				 slotcmd,
 				 LSN_FORMAT_ARGS(stream->startpos),
@@ -587,6 +607,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		PQclear(res);
 
 		/* Stream the WAL */
+		/* 流式传输 WAL */
 		res = HandleCopyStream(conn, stream, &stoppos);
 		if (res == NULL)
 			goto error;
@@ -740,6 +761,12 @@ ReadEndOfStreamingResult(PGresult *res, XLogRecPtr *startpos, uint32 *timeline)
  * If the COPY ends (not necessarily successfully) due a message from the
  * server, returns a PGresult and sets *stoppos to the last byte written.
  * On any other sort of error, returns NULL.
+ *
+ * ReceiveXlogStream 的主循环。 使用 START_REPLICATION 命令启动流后处理 COPY 流。
+ *
+ * 如果 COPY 由于来自服务器的消息而结束（不一定成功），则返回 PGresult 并将 *stoppos 设置为最后写入的字节。
+ * 对于任何其他类型的错误，返回 NULL。
+ *
  */
 static PGresult *
 HandleCopyStream(PGconn *conn, StreamCtl *stream,
@@ -759,6 +786,8 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 
 		/*
 		 * Check if we should continue streaming, or abort at this point.
+		 *
+		 * 检查我们是否应该继续流式传输，或者此时中止。
 		 */
 		if (!CheckCopyStreamStop(conn, stream, blockpos))
 			goto error;
@@ -768,6 +797,8 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 		/*
 		 * If synchronous option is true, issue sync command as soon as there
 		 * are WAL data which has not been flushed yet.
+		 *
+		 * 如果 synchronous 选项为 true，则一旦有尚未刷新的 WAL 数据就发出同步命令。
 		 */
 		if (stream->synchronous && lastFlushPosition < blockpos && walfile != NULL)
 		{
@@ -779,6 +810,8 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 			/*
 			 * Send feedback so that the server sees the latest WAL locations
 			 * immediately.
+			 *
+			 * 发送反馈，以便服务器立即看到最新的 WAL 位置。
 			 */
 			if (!sendFeedback(conn, blockpos, now, false))
 				goto error;
@@ -787,12 +820,14 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 
 		/*
 		 * Potentially send a status message to the primary
+		 * 可能向主节点发送状态消息
 		 */
 		if (still_sending && stream->standby_message_timeout > 0 &&
 			feTimestampDifferenceExceeds(last_status, now,
 										 stream->standby_message_timeout))
 		{
 			/* Time to send feedback! */
+			/* 发送反馈的时间 */
 			if (!sendFeedback(conn, blockpos, now, false))
 				goto error;
 			last_status = now;
@@ -804,6 +839,7 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 		sleeptime = CalculateCopyStreamSleeptime(now, stream->standby_message_timeout,
 												 last_status);
 
+		// 接收复制流, 填充 copybuf
 		r = CopyStreamReceive(conn, sleeptime, stream->stop_socket, &copybuf);
 		while (r != 0)
 		{

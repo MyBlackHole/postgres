@@ -26,6 +26,8 @@
 
 /*
  * The shared freelist control information.
+ *
+ * 共享空闲控制信息
  */
 typedef struct
 {
@@ -36,6 +38,10 @@ typedef struct
 	 * Clock sweep hand: index of next buffer to consider grabbing. Note that
 	 * this isn't a concrete buffer - we only ever increase the value. So, to
 	 * get an actual buffer, it needs to be used modulo NBuffers.
+	 *
+	 * 时钟扫描手：考虑抓取的下一个缓冲区的索引。
+	 * 请注意，这不是一个具体的缓冲区 - 我们只会增加该值。
+	 * 因此，要获得实际的缓冲区，需要对 NBuffers 进行模运算。
 	 */
 	pg_atomic_uint32 nextVictimBuffer;
 
@@ -51,7 +57,9 @@ typedef struct
 	 * Statistics.  These counters should be wide enough that they can't
 	 * overflow during a single bgwriter cycle.
 	 */
+	// 时钟扫描的完整周期
 	uint32		completePasses; /* Complete cycles of the clock sweep */
+	// 自上次重置后分配的缓冲区
 	pg_atomic_uint32 numBufferAllocs;	/* Buffers allocated since last reset */
 
 	/*
@@ -62,6 +70,7 @@ typedef struct
 } BufferStrategyControl;
 
 /* Pointers to shared state */
+// 策略控制 buffer 指针
 static BufferStrategyControl *StrategyControl = NULL;
 
 /*
@@ -389,6 +398,14 @@ StrategyFreeBuffer(BufferDesc *buf)
  * the higher-order bits of nextVictimBuffer) and the count of recent buffer
  * allocs if non-NULL pointers are passed.  The alloc count is reset after
  * being read.
+ *
+ * StrategySyncStart -- 告诉 BufferSync 从哪里开始同步
+ *                                                                        
+ * 结果是首先同步的最佳缓冲区的缓冲区索引。
+ * BufferSync() 将从那里开始围绕缓冲区数组循环进行。
+ *                                                                           
+ * 此外，如果传递非 NULL 指针，我们还会返回已完成的传递计数（实际上是 nextVictimBuffer 的高位）和最近的缓冲区分配计数。 
+ * 分配计数在读取后重置。
  */
 int
 StrategySyncStart(uint32 *complete_passes, uint32 *num_buf_alloc)
@@ -407,6 +424,8 @@ StrategySyncStart(uint32 *complete_passes, uint32 *num_buf_alloc)
 		/*
 		 * Additionally add the number of wraparounds that happened before
 		 * completePasses could be incremented. C.f. ClockSweepTick().
+		 *
+		 * 另外添加在 completePasses 可以增加之前发生的回绕次数。 C.f. 时钟扫描Tick()。
 		 */
 		*complete_passes += nextVictimBuffer / NBuffers;
 	}

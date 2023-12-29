@@ -123,6 +123,12 @@ struct WalWriteMethod
  *	- WalTarMethod       - write WAL to a tarfile corresponding to pg_wal
  *						   (only implements the methods required for pg_basebackup,
  *						   not all those required for pg_receivewal)
+ *
+ * 可用的 WAL 方法：
+ * - WalDirectoryMethod - 将 WAL 写入标准 pg_wal 中的常规文件
+ * - WalTarMethod - 将 WAL 写入与 pg_wal 对应的 tarfile
+ *（仅实现pg_basebackup所需的方法，
+ * 并非 pg_receivewal 所需的所有内容）
  */
 WalWriteMethod *CreateWalDirectoryMethod(const char *basedir,
 										 pg_compress_algorithm compression_algorithm,

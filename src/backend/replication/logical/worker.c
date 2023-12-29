@@ -4681,6 +4681,7 @@ SetupApplyOrSyncWorker(int worker_slot)
 }
 
 /* Logical Replication Apply worker entry point */
+/* 逻辑复制应用工作线程入口点 */
 void
 ApplyWorkerMain(Datum main_arg)
 {

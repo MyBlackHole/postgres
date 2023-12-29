@@ -94,6 +94,7 @@ GetConnection(void)
 				argcount++;
 		}
 
+		// 分配 key value 内存空间
 		keywords = pg_malloc0((argcount + 1) * sizeof(*keywords));
 		values = pg_malloc0((argcount + 1) * sizeof(*values));
 
@@ -468,9 +469,9 @@ RetrieveDataDirCreatePerm(PGconn *conn)
 /*
  * Run IDENTIFY_SYSTEM through a given connection and give back to caller
  * some result information if requested:
- * - System identifier
- * - Current timeline ID
- * - Start LSN position
+ * - System identifier: 系统标识符
+ * - Current timeline ID: 当前时间线 id
+ * - Start LSN position: 开始 lsn(日志序列号) 位置
  * - Database name (NULL in servers prior to 9.4)
  */
 bool
@@ -484,6 +485,15 @@ RunIdentifySystem(PGconn *conn, char **sysid, TimeLineID *starttli,
 	/* Check connection existence */
 	Assert(conn != NULL);
 
+	// 发送 IDENTIFY_SYSTEM 
+	// 获取系统标识与时间线
+	//
+	// psql "dbname=postgres replication=database" -c "IDENTIFY_SYSTEM"
+	//    systemid       | timeline |  xlogpos  |  dbname
+	// ---------------------+----------+-----------+----------
+	//  7316146825276107017 |        1 | 0/1544A80 | postgres
+	// (1 row)
+	//
 	res = PQexec(conn, "IDENTIFY_SYSTEM");
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -503,14 +513,17 @@ RunIdentifySystem(PGconn *conn, char **sysid, TimeLineID *starttli,
 	}
 
 	/* Get system identifier */
+	/* 获取系统标识符 */
 	if (sysid != NULL)
 		*sysid = pg_strdup(PQgetvalue(res, 0, 0));
 
 	/* Get timeline ID to start streaming from */
+	/* 获取时间线 id */
 	if (starttli != NULL)
 		*starttli = atoi(PQgetvalue(res, 0, 1));
 
 	/* Get LSN start position if necessary */
+	/* 如有必要，获取 LSN 起始位置 */
 	if (startpos != NULL)
 	{
 		if (sscanf(PQgetvalue(res, 0, 2), "%X/%X", &hi, &lo) != 2)

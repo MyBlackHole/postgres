@@ -110,6 +110,8 @@ static BackgroundWorkerArray *BackgroundWorkerData;
 /*
  * List of internal background worker entry points.  We need this for
  * reasons explained in LookupBackgroundWorkerFunction(), below.
+ * 内部后台工作者入口点列表。
+ * 我们需要这个的原因在下面的 LookupBackgroundWorkerFunction() 中解释。
  */
 static const struct
 {
@@ -141,6 +143,7 @@ static bgworker_main_type LookupBackgroundWorkerFunction(const char *libraryname
 
 /*
  * Calculate shared memory needed.
+ * 计算所需的共享内存。
  */
 Size
 BackgroundWorkerShmemSize(void)
@@ -1257,6 +1260,20 @@ TerminateBackgroundWorker(BackgroundWorkerHandle *handle)
  * At some point it might be worthwhile to get rid of InternalBGWorkers[]
  * in favor of applying load_external_function() for core functions too;
  * but that raises portability issues that are not worth addressing now.
+ *
+ * 查找（并可能加载）bgworker 入口点函数。
+ * 
+ * 对于核心代码中包含的功能，
+ * 我们使用库名称“postgres”并查阅InternalBGWorkers 数组。
+ * 使用 load_external_function() 查找外部函数，并在必要时加载。
+ * 
+ * 这样做的要点是将函数名称作为字符串跨进程边界传递。
+ * 我们无法传递实际的函数地址，因为该函数可能已加载到不同进程中的不同地址。
+ * 这对于可加载库中的函数来说显然是一个危险，但即使对于使用 EXEC_BACKEND 的平台（例如 Windows）上的核心代码中的函数也可能发生。
+ * 
+ * 在某些时候，可能值得摆脱InternalBGWorkers[]，转而对核心函数应用load_external_function()；
+ * 但这引发了现在不值得解决的可移植性问题。
+ *
  */
 static bgworker_main_type
 LookupBackgroundWorkerFunction(const char *libraryname, const char *funcname)
@@ -1280,6 +1297,7 @@ LookupBackgroundWorkerFunction(const char *libraryname, const char *funcname)
 	}
 
 	/* Otherwise load from external library. */
+	/* 否则从外部库加载 */
 	return (bgworker_main_type)
 		load_external_function(libraryname, funcname, true, NULL);
 }

@@ -1117,6 +1117,7 @@ ApplyLauncherWakeup(void)
 
 /*
  * Main loop for the apply launcher process.
+ * 应用启动器进程的主循环。
  */
 void
 ApplyLauncherMain(Datum main_arg)

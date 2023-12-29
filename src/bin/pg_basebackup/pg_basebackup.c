@@ -138,11 +138,13 @@ static bool showprogress = false;
 static bool estimatesize = true;
 static int	verbose = 0;
 static IncludeWal includewal = STREAM_WAL;
+// 快速检查点
 static bool fastcheckpoint = false;
 static bool writerecoveryconf = false;
 static bool do_sync = true;
 static int	standby_message_timeout = 10 * 1000;	/* 10 sec = default */
 static pg_time_t last_progress_report = 0;
+// 速率限制
 static int32 maxrate = 0;		/* no limit by default */
 static char *replication_slot = NULL;
 static bool temp_replication_slot = true;
@@ -532,20 +534,28 @@ reached_end_position(XLogRecPtr segendpos, uint32 timeline,
 
 typedef struct
 {
+	// 链接对象
 	PGconn	   *bgconn;
+	// 开始位置
 	XLogRecPtr	startptr;
 	char		xlog[MAXPGPATH];	/* directory or tarfile depending on mode */
+	// 系统标识符
 	char	   *sysidentifier;
+	// 时间线
 	int			timeline;
+	// 压缩算法
 	pg_compress_algorithm wal_compress_algorithm;
+	// 压缩等级
 	int			wal_compress_level;
 } logstreamer_param;
 
+// 日志流处理主例程
 static int
 LogStreamerMain(logstreamer_param *param)
 {
 	StreamCtl	stream = {0};
 
+	// 初始化流控制
 	in_log_streamer = true;
 
 	stream.startpos = param->startptr;
@@ -574,6 +584,7 @@ LogStreamerMain(logstreamer_param *param)
 											  param->wal_compress_level,
 											  stream.do_sync);
 
+	// 接收 xlog 流
 	if (!ReceiveXlogStream(param->bgconn, &stream))
 	{
 		/*
@@ -611,6 +622,9 @@ LogStreamerMain(logstreamer_param *param)
  * Initiate background process for receiving xlog during the backup.
  * The background stream will use its own database connection so we can
  * stream the logfile in parallel with the backups.
+ *
+ * 在备份期间启动后台进程接收 xlog。
+ * 后台流将使用其自己的数据库连接，因此我们可以与备份并行传输日志文件。
  */
 static void
 StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
@@ -629,11 +643,13 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 	param->wal_compress_level = wal_compress_level;
 
 	/* Convert the starting position */
+	/* 转换起始位置 */
 	if (sscanf(startpos, "%X/%X", &hi, &lo) != 2)
 		pg_fatal("could not parse write-ahead log location \"%s\"",
 				 startpos);
 	param->startptr = ((uint64) hi) << 32 | lo;
 	/* Round off to even segment position */
+	/* 四舍五入到偶数段位置 */
 	param->startptr -= XLogSegmentOffset(param->startptr, WalSegSz);
 
 #ifndef WIN32
@@ -643,6 +659,7 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 #endif
 
 	/* Get a second connection */
+	/* 获取第二个连接 */
 	param->bgconn = GetConnection();
 	if (!param->bgconn)
 		/* Error message already written in GetConnection() */
@@ -716,12 +733,15 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 	/*
 	 * Start a child process and tell it to start streaming. On Unix, this is
 	 * a fork(). On Windows, we create a thread.
+	 *
+	 * 启动一个子进程并告诉它开始流式传输。 在 Unix 上，这是一个 fork()。 在 Windows 上，我们创建一个线程。
 	 */
 #ifndef WIN32
 	bgchild = fork();
 	if (bgchild == 0)
 	{
 		/* in child process */
+		// 子进程处理
 		exit(LogStreamerMain(param));
 	}
 	else if (bgchild < 0)
@@ -1279,6 +1299,8 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 /*
  * Receive all of the archives the server wants to send - and the backup
  * manifest if present - as a single COPY stream.
+ *
+ * 接收服务器想要发送的所有存档 - 以及备份清单（如果存在） - 作为单个 COPY 流。
  */
 static void
 ReceiveArchiveStream(PGconn *conn, pg_compress_specification *compress)
@@ -1286,11 +1308,13 @@ ReceiveArchiveStream(PGconn *conn, pg_compress_specification *compress)
 	ArchiveStreamState state;
 
 	/* Set up initial state. */
+	/* 设置初始状态 */
 	memset(&state, 0, sizeof(state));
 	state.tablespacenum = -1;
 	state.compress = compress;
 
 	/* All the real work happens in ReceiveArchiveStreamChunk. */
+	/* 所有实际工作都发生在 ReceiveArchiveStreamChunk 中 */
 	ReceiveCopyData(conn, ReceiveArchiveStreamChunk, &state);
 
 	/* If we wrote the backup manifest to a file, close the file. */
@@ -1777,9 +1801,12 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	/*
 	 * Check server version. BASE_BACKUP command was introduced in 9.1, so we
 	 * can't work with servers older than 9.1.
+	 *
+	 * 验证 server version
 	 */
 	minServerMajor = 901;
 	maxServerMajor = PG_VERSION_NUM / 100;
+	// 获取版本
 	serverVersion = PQserverVersion(conn);
 	serverMajor = serverVersion / 100;
 	if (serverMajor < minServerMajor || serverMajor > maxServerMajor)
@@ -1815,6 +1842,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	 * file as part of primary_conninfo would be used by slotsync worker which
 	 * doesn't use a replication connection so the default won't work for it.
 	 */
+	// 如果需要，构建配置文件的内容
 	if (writerecoveryconf)
 		recoveryconfcontents = GenerateRecoveryConfig(conn,
 													  replication_slot,
@@ -1822,6 +1850,8 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 	/*
 	 * Run IDENTIFY_SYSTEM so we can get the timeline
+	 *
+	 * 获取时间线
 	 */
 	if (!RunIdentifySystem(conn, &sysidentifier, &latesttli, NULL, NULL))
 		exit(1);
@@ -1829,7 +1859,10 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	/*
 	 * If the user wants an incremental backup, we must upload the manifest
 	 * for the previous backup upon which it is to be based.
+	 * 如果用户想要增量备份，我们必须上传manifest
+	 * 表示它所基于的先前备份。
 	 */
+	 // 开始实际备份(终于真正开始了)
 	if (incremental_manifest != NULL)
 	{
 		int			fd;
@@ -1897,14 +1930,20 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 	/*
 	 * Continue building up the options list for the BASE_BACKUP command.
+	 *
+	 * 继续构建 BASE_BACKUP 命令的选项列表。
 	 */
+	// 设置标签
 	AppendStringCommandOption(&buf, use_new_option_syntax, "LABEL", label);
 	if (estimatesize)
+		// 设置进度
 		AppendPlainCommandOption(&buf, use_new_option_syntax, "PROGRESS");
 	if (includewal == FETCH_WAL)
+		// 包括 wal(预写日志)
 		AppendPlainCommandOption(&buf, use_new_option_syntax, "WAL");
 	if (fastcheckpoint)
 	{
+		// 设置快速检查点
 		if (use_new_option_syntax)
 			AppendStringCommandOption(&buf, use_new_option_syntax,
 									  "CHECKPOINT", "fast");
@@ -1913,6 +1952,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	}
 	if (includewal != NO_WAL)
 	{
+		// 不需要 wal
 		if (use_new_option_syntax)
 			AppendIntegerCommandOption(&buf, use_new_option_syntax, "WAIT", 0);
 		else
@@ -1922,9 +1962,11 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		AppendIntegerCommandOption(&buf, use_new_option_syntax, "MAX_RATE",
 								   maxrate);
 	if (format == 't')
+		// 表空间映射
 		AppendPlainCommandOption(&buf, use_new_option_syntax, "TABLESPACE_MAP");
 	if (!verify_checksums)
 	{
+		// 检查校验和
 		if (use_new_option_syntax)
 			AppendIntegerCommandOption(&buf, use_new_option_syntax,
 									   "VERIFY_CHECKSUMS", 0);
@@ -1954,6 +1996,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 		AppendPlainCommandOption(&buf, use_new_option_syntax, "TABLESPACE_MAP");
 
+		// 设置备份目标
 		if ((colon = strchr(backup_target, ':')) == NULL)
 		{
 			AppendStringCommandOption(&buf, use_new_option_syntax,
@@ -1998,18 +2041,22 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 			fprintf(stderr, "\n");
 	}
 
+	// 拼接完整路径
 	if (use_new_option_syntax && buf.len > 0)
 		basebkp = psprintf("BASE_BACKUP (%s)", buf.data);
 	else
 		basebkp = psprintf("BASE_BACKUP %s", buf.data);
 
 	/* OK, try to start the backup. */
+	/* 好的，尝试开始备份。 */
+	// 执行备份 sql
 	if (PQsendQuery(conn, basebkp) == 0)
 		pg_fatal("could not send replication command \"%s\": %s",
 				 "BASE_BACKUP", PQerrorMessage(conn));
 
 	/*
 	 * Get the starting WAL location
+	 * 获取起始 WAL 位置
 	 */
 	res = PQgetResult(conn);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -2019,6 +2066,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		pg_fatal("server returned unexpected response to BASE_BACKUP command; got %d rows and %d fields, expected %d rows and %d fields",
 				 PQntuples(res), PQnfields(res), 1, 2);
 
+	// 解析出 xlogstart
 	strlcpy(xlogstart, PQgetvalue(res, 0, 0), sizeof(xlogstart));
 
 	if (verbose)
@@ -2028,6 +2076,8 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	 * 9.3 and later sends the TLI of the starting point. With older servers,
 	 * assume it's the same as the latest timeline reported by
 	 * IDENTIFY_SYSTEM.
+	 *
+	 * 设置开始时间线
 	 */
 	if (PQnfields(res) >= 2)
 		starttli = atoi(PQgetvalue(res, 0, 1));
@@ -2041,6 +2091,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 	/*
 	 * Get the header
+	 * 获取标题
 	 */
 	res = PQgetResult(conn);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -2051,11 +2102,13 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 	/*
 	 * Sum up the total size, for progress reporting
+	 * 总结总大小，用于进度报告
 	 */
 	totalsize_kb = totaldone = 0;
 	tablespacecount = PQntuples(res);
 	for (i = 0; i < PQntuples(res); i++)
 	{
+		// 获取总大小
 		totalsize_kb += atol(PQgetvalue(res, i, 2));
 
 		/*
@@ -2067,6 +2120,12 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		 * the server is storing to a target location, since in that case we
 		 * won't be storing anything into these directories and thus should
 		 * not create them.
+		 *
+		 * 验证表空间目录是否为空。
+		 * 不要费心第一次，因为它可以重新定位，并且在我们做任何事情之前都会对其进行检查。
+		 *
+		 * 请注意，对于 tar 格式备份和服务器存储到目标位置的备份，此操作会被跳过，因为在这种情况下，
+		 * 我们不会将任何内容存储到这些目录中，因此不应创建它们。
 		 */
 		if (backup_target == NULL && format == 'p' && !PQgetisnull(res, i, 1))
 		{
@@ -2096,6 +2155,8 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	/*
 	 * If we're streaming WAL, start the streaming session before we start
 	 * receiving the actual data chunks.
+	 *
+	 * 如果我们正在流式传输 WAL，请在开始接收实际数据块之前启动流式会话。
 	 */
 	if (includewal == STREAM_WAL)
 	{
@@ -2116,6 +2177,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 			wal_compress_level = 0;
 		}
 
+		// 开启流式日志
 		StartLogStreamer(xlogstart, starttli, sysidentifier,
 						 wal_compress_algorithm,
 						 wal_compress_level);
@@ -2124,6 +2186,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	if (serverMajor >= 1500)
 	{
 		/* Receive a single tar stream with everything. */
+		/* 接收包含所有内容的单个 tar 流 */
 		ReceiveArchiveStream(conn, client_compress);
 	}
 	else
@@ -2175,6 +2238,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 
 	if (showprogress)
 	{
+		// 显示进度
 		progress_update_filename(NULL);
 		progress_report(PQntuples(res), true, true);
 	}
@@ -2805,6 +2869,7 @@ main(int argc, char **argv)
 	}
 
 	/* connection in replication mode to server */
+	/* 以复制模式连接到服务器 */
 	conn = GetConnection();
 	if (!conn)
 	{
@@ -2872,6 +2937,7 @@ main(int argc, char **argv)
 		free(linkloc);
 	}
 
+	// 进入备份例程
 	BaseBackup(compression_algorithm, compression_detail, compressloc,
 			   &client_compress, incremental_manifest);
 

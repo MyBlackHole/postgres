@@ -27,7 +27,7 @@ black     717691  0.0  0.0 205312  5920 ?        Ss   21:07   0:00 postgres: log
 # 停止数据库服务
 pg_ctl -D Debug/database stop
 
-# 连接
+# 连接(debug 建议用此)
 psql postgres
 # black 为 linux 当前登陆用户
 pgcli -h 127.0.0.1 -U black postgres

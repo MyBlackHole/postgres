@@ -3138,6 +3138,8 @@ BgBufferSync(WritebackContext *wb_context)
 	/*
 	 * Information saved between calls so we can determine the strategy
 	 * point's advance rate and avoid scanning already-cleaned buffers.
+	 *
+	 * 在调用之间保存信息，以便我们可以确定策略点的推进率并避免扫描已经清理的缓冲区。
 	 */
 	static bool saved_info_valid = false;
 	static int	prev_strategy_buf_id;
@@ -3154,6 +3156,7 @@ BgBufferSync(WritebackContext *wb_context)
 	float		scan_whole_pool_milliseconds = 120000.0;
 
 	/* Used to compute how far we scan ahead */
+	// 策略增量
 	long		strategy_delta;
 	int			bufs_to_lap;
 	int			bufs_ahead;
@@ -3181,6 +3184,7 @@ BgBufferSync(WritebackContext *wb_context)
 	strategy_buf_id = StrategySyncStart(&strategy_passes, &recent_alloc);
 
 	/* Report buffer alloc counts to pgstat */
+	// 报告：buffer 分配计数
 	PendingBgWriterStats.buf_alloc += recent_alloc;
 
 	/*
@@ -3201,6 +3205,12 @@ BgBufferSync(WritebackContext *wb_context)
 	 * buffers we could scan before we'd catch up with it and "lap" it. Note:
 	 * weird-looking coding of xxx_passes comparisons are to avoid bogus
 	 * behavior when the passes counts wrap around.
+	 *
+	 * 计算 strategy_delta = 自上次以来时钟扫描已扫描了多少个缓冲区。
+	 * 如果是第一次，则假设没有。 然后看看我们是否仍然领先于时钟扫描，如果是的话，
+	 * 在我们赶上它并“重叠”它之前，我们可以扫描多少缓冲区。 笔记：
+	 * xxx_passes 比较的奇怪编码是为了避免伪造
+	 * 当传球计数回绕时的行为。
 	 */
 	if (saved_info_valid)
 	{
@@ -3214,6 +3224,8 @@ BgBufferSync(WritebackContext *wb_context)
 		if ((int32) (next_passes - strategy_passes) > 0)
 		{
 			/* we're one pass ahead of the strategy point */
+			/* 我们比策略点领先一步 */
+			// 为什么会存在此情况
 			bufs_to_lap = strategy_buf_id - next_to_clean;
 #ifdef BGW_DEBUG
 			elog(DEBUG2, "bgwriter ahead: bgw %u-%u strategy %u-%u delta=%ld lap=%d",
