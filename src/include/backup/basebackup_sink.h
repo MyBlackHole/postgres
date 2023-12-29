@@ -100,6 +100,7 @@ struct bbsink
 {
 	const bbsink_ops *bbs_ops;
 	char	   *bbs_buffer;
+	// 缓存大小
 	size_t		bbs_buffer_length;
 	// 处理链指针
 	bbsink	   *bbs_next;
@@ -197,6 +198,7 @@ bbsink_begin_archive(bbsink *sink, const char *archive_name)
 }
 
 /* Process some of the contents of an archive. */
+/* 处理档案的一些内容。 */
 static inline void
 bbsink_archive_contents(bbsink *sink, size_t len)
 {

@@ -104,6 +104,10 @@ struct exclude_list_item
  * List of files excluded from checksum validation.
  *
  * Note: this list should be kept in sync with what basebackup.c includes.
+ *
+ * 从校验和验证中排除的文件列表。
+ *
+ * 注意：此列表应与 basebackup.c 包含的内容保持同步。
  */
 static const struct exclude_list_item skip[] = {
 	{"pg_control", false},

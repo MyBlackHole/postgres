@@ -96,6 +96,7 @@ FreeBackupManifest(backup_manifest_info *manifest)
 
 /*
  * Add an entry to the backup manifest for a file.
+ * 将条目添加到文件的备份清单中。
  */
 void
 AddFileToBackupManifest(backup_manifest_info *manifest, Oid spcoid,

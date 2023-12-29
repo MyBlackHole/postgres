@@ -57,8 +57,11 @@
  */
 typedef struct RelFileLocator
 {
+	// 表空间
 	Oid			spcOid;			/* tablespace */
+	// 表
 	Oid			dbOid;			/* database */
+	// 关系
 	RelFileNumber relNumber;	/* relation */
 } RelFileLocator;
 

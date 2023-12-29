@@ -76,12 +76,15 @@ static uint32 hash_string_pointer(const char *s);
 struct IncrementalBackupInfo
 {
 	/* Memory context for this object and its subsidiary objects. */
+	/* 该对象及其附属对象的内存上下文。 */
 	MemoryContext mcxt;
 
 	/* Temporary buffer for storing the manifest while parsing it. */
+	/* 用于在解析清单时存储清单的临时缓冲区 */
 	StringInfoData buf;
 
 	/* WAL ranges extracted from the backup manifest. */
+	/* 从备份清单中提取的 WAL 范围。 */
 	List	   *manifest_wal_ranges;
 
 	/*
@@ -104,6 +107,18 @@ struct IncrementalBackupInfo
 	 * One significant downside of storing this data is that it consumes
 	 * memory. If that turns out to be a problem, we might have to decide not
 	 * to retain this information, or to make it optional.
+	 *
+	 * 从备份清单中提取的文件
+	 * 我们实际上并不需要这些信息，因为我们使用 WAL 摘要来确定发生了什么变化
+	 * 仅依赖以前存在的文件列表是不安全的，因为有可能删除一个文件并创建一个具有相同名称和不同内容的新文件
+	 * 在这种情况下，仍然必须发送整个文件
+	 * 我们可以从 WAL 摘要中判断是否发生了这种情况，但不能从文件列表中判断
+	 * 尽管如此，这些数据对于健全性检查还是有用的
+	 * 如果我们认为不需要发送的文件未出现在先前备份的清单中，则表明出现了严重错误
+	 * 我们保留文件名和大小，但不保留校验和或上次修改时间，因为我们对此没有用处
+	 * 存储这些数据的一个显着缺点是它会消耗内存
+	 * 如果这成为一个问题，我们可能不得不决定不保留此信息，或者将其设为可选
+	 *
 	 */
 	backup_file_hash *manifest_files;
 
@@ -118,6 +133,12 @@ struct IncrementalBackupInfo
 	 * a database with a sufficiently large number of relations on a
 	 * sufficiently small machine, you could run out of memory here. If that
 	 * turns out to be a problem in practice, we'll need to be more clever.
+	 *
+	 * 增量备份的块引用表
+	 * 对于某些用户来说，将整个块引用表存储在内存中可能会出现问题
+	 * 我们在这里使用的内存格式非常高效，对于具有大量修改块的关系分叉，收敛到每个块略多于 1 位
+	 * 但是，如果您尝试在足够小的计算机上对具有足够多关系的数据库执行增量备份，则可能会耗尽内存
+	 * 如果这在实践中成为问题，我们就需要更加聪明
 	 */
 	BlockRefTable *brtab;
 
@@ -260,6 +281,15 @@ FinalizeIncrementalManifest(IncrementalBackupInfo *ib)
  * whether those summaries are available. Then, it reads and combines the
  * data from those summary files. It also updates the backup_state with the
  * reference TLI and LSN for the prior backup.
+ *
+ * 准备进行增量备份
+ *
+ * 在调用此函数之前，应已调用 AppendIncrementalManifestData 和 FinalizeIncrementalManifest 以将所有清单数据传递给此对象
+ *
+ * 该函数对从清单中提取的数据执行健全性检查，并找出我们需要摘要的 WAL 范围，以及这些摘要是否可用
+ * 然后，它读取并组合这些摘要文件中的数据
+ * 它还使用先前备份的参考 TLI 和 LSN 更新 backup_state
+ *
  */
 void
 PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
@@ -287,11 +317,15 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	Assert(ib->buf.data == NULL);
 
 	/* Switch to our memory context. */
+	/* 切换到我们的内存上下文。 */
 	oldcontext = MemoryContextSwitchTo(ib->mcxt);
 
 	/*
 	 * A valid backup manifest must always contain at least one WAL range
 	 * (usually exactly one, unless the backup spanned a timeline switch).
+	 *
+	 * 有效的备份清单必须始终包含至少一个 WAL 范围
+	 *（通常恰好是一个，除非备份跨越时间线切换）。
 	 */
 	num_wal_ranges = list_length(ib->manifest_wal_ranges);
 	if (num_wal_ranges == 0)
@@ -317,6 +351,16 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * TLI is the one that occurs nearest the end of the list returned by
 	 * readTimeLineHistory, and the latest TLI is the one that occurs closest
 	 * to the beginning.
+	 *
+	 * 将备份清单的 WAL 范围中出现的 TLI 与该服务器时间线历史记录中出现的 TLI 进行匹配
+	 * 我们期望每个 backup_wal_range 都与 TimeLineHistoryEntry 匹配； 如果没有，那就是一个错误。
+	 *
+	 * 该循环还根据该服务器的时间线历史来决定哪个 WAL 范围的清单是最古老的，
+	 * 哪个是最新的，并将这些 WAL 范围的 TLI 存储到 Early_wal_range_tli 和 latest_wal_range_tli 中
+	 * 它还将 earest_wal_range_start_lsn 更新为 earest_wal_range_tli 的 WAL 范围的起始LSN。
+	 *
+	 * 请注意，readTimeLineHistory 的返回值将最新的时间线放在列表的开头，而不是结尾
+	 * 因此，最早的 TLI 是最接近 readTimeLineHistory 返回的列表末尾的 TLI，而最新的 TLI 是最接近开头的 TLI。
 	 */
 	expectedTLEs = readTimeLineHistory(backup_state->starttli);
 	tlep = palloc0(num_wal_ranges * sizeof(TimeLineHistoryEntry *));
@@ -646,6 +690,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 *
 	 * See the comments for struct IncrementalBackupInfo for some thoughts on
 	 * memory usage.
+	 *
+	 * 读取所有所需的块引用表文件并将所有数据合并到单个内存中块引用表中
+	 * 有关内存使用的一些想法，请参阅 struct IncrementalBackupInfo 的注释
 	 */
 	ib->brtab = CreateEmptyBlockRefTable();
 	foreach(lc, required_wslist)
@@ -739,6 +786,13 @@ GetIncrementalFilePath(Oid dboid, Oid spcoid, RelFileNumber relfilenumber,
  * relative_block_numbers, which should be an array of at least RELSEG_SIZE.
  * In addition, *truncation_block_length will be set to the value that should
  * be included in the incremental file.
+ *
+ * 作为增量备份的一部分，我们应该如何备份特定文件？ 如果返回值是 BACK_UP_FILE_FULLY，调用者应该备份整个文件，就像这不是增量备份一样
+ *
+ * 如果返回值为 BACK_UP_FILE_INCRMENTALLY，则调用者应在备份中包含增量文件而不是整个文件
+ *
+ * 返回时，*num_blocks_required 将设置为需要发送的块数，实际块号将存储在relative_block_numbers 中，该数组应该至少为 RELSEG_SIZE 的数组
+ * 此外，*truncation_block_length 将设置为应包含在增量文件中的值
  */
 FileBackupMethod
 GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
@@ -758,6 +812,7 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	unsigned	nblocks;
 
 	/* Should only be called after PrepareForIncrementalBackup. */
+	// PrepareForIncrementalBackup 执行后调用
 	Assert(ib->buf.data == NULL);
 
 	/*
@@ -770,6 +825,8 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	/*
 	 * If the file size is too large or not a multiple of BLCKSZ, then
 	 * something weird is happening, so give up and send the whole file.
+	 *
+	 * 如果文件大小太大或者不是 BLCKSZ 的倍数，那么就会发生奇怪的事情，因此放弃并发送整个文件
 	 */
 	if ((size % BLCKSZ) != 0 || size / BLCKSZ > RELSEG_SIZE)
 		return BACK_UP_FILE_FULLY;
@@ -777,6 +834,8 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	/*
 	 * The free-space map fork is not properly WAL-logged, so we need to
 	 * backup the entire file every time.
+	 *
+	 * 自由空间映射分支没有正确记录 WAL，因此我们每次都需要备份整个文件。
 	 */
 	if (forknum == FSM_FORKNUM)
 		return BACK_UP_FILE_FULLY;
@@ -802,6 +861,17 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	 * this type of case, WAL replay to reach backup consistency should remove
 	 * and recreate the file anyway, so the initial bogus contents should not
 	 * matter.
+	 *
+	 * 如果此文件不是先前备份的一部分，请将其完全备份
+	 * 如果该文件是在上次备份之后、当前备份开始之前创建的，那么 WAL 摘要信息将告诉我们备份整个文件
+	 * 但是，如果此文件是在当前备份开始后创建的，则 WAL 摘要将不知道任何有关它的信息
+	 * 如果没有这个逻辑，我们就会错误地认为可以增量发送
+	 * 请注意，该文件可能在先前备份时已存在，被删除，然后可能创建一个具有相同名称的新文件
+	 * 在这种情况下，此逻辑不会阻止文件增量备份
+	 * 但是，如果删除发生在当前备份开始之前，则限制块将为 0，从而引发完整备份
+	 * 如果删除发生在当前备份开始之后，重建将错误地将文件当前生命周期中的块与上一个生命周期中的块组合起来——但在这种情况下，
+	 * 为了达到备份一致性而进行的 WAL 重播应该删除并重新创建文件无论如何，文件，所以最初的虚假内容应该无关紧要
+	 *
 	 */
 	if (backup_file_lookup(ib->manifest_files, path) == NULL)
 	{
@@ -817,6 +887,7 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	 * Look up the special block reference table entry for the database as a
 	 * whole.
 	 */
+	/* 查找块引用表条目 */
 	rlocator.spcOid = spcoid;
 	rlocator.dbOid = dboid;
 	rlocator.relNumber = 0;

@@ -375,6 +375,13 @@ ResetUnloggedRelationsInDbspaceDir(const char *dbspacedirname, int op)
  * If it returns true, it sets *relnumber, *fork, and *segno to the values
  * extracted from the filename. If it returns false, these values are set to
  * InvalidRelFileNumber, InvalidForkNumber, and 0, respectively.
+ *
+ * 假定关系文件名的基本解析
+ * 
+ * 如果文件对于非临时关系来说格式正确，则此函数返回 true，否则返回 false
+ * 
+ * 如果返回 true，则会将 *relnumber、*fork 和 *segno 设置为从文件名中提取的值
+ * 如果返回 false，则这些值分别设置为 InvalidRelFileNumber、InvalidForkNumber 和 0
  */
 bool
 parse_filename_for_nontemp_relation(const char *name, RelFileNumber *relnumber,

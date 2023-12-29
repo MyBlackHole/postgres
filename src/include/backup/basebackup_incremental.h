@@ -21,7 +21,9 @@
 
 typedef enum
 {
+	// 全量备份文件
 	BACK_UP_FILE_FULLY,
+	// 增量备份文件
 	BACK_UP_FILE_INCREMENTALLY
 } FileBackupMethod;
 

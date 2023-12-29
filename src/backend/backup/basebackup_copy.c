@@ -181,6 +181,7 @@ bbsink_copystream_begin_archive(bbsink *sink, const char *archive_name)
 
 /*
  * Send a CopyData message containing a chunk of archive content.
+ * 发送包含存档内容块的 CopyData 消息。
  */
 static void
 bbsink_copystream_archive_contents(bbsink *sink, size_t len)

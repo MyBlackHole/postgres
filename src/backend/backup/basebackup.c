@@ -120,6 +120,7 @@ static ssize_t basebackup_read_file(int fd, char *buf, size_t nbytes, off_t offs
 									const char *filename, bool partial_read_ok);
 
 /* Was the backup currently in-progress initiated in recovery mode? */
+/* 当前正在进行的备份是否在恢复模式下启动 */
 static bool backup_started_in_recovery = false;
 
 /* Total number of checksum failures during base backup. */
@@ -137,6 +138,7 @@ static bool noverify_checksums = false;
 struct exclude_list_item
 {
 	const char *name;
+	// 是否前缀匹配
 	bool		match_prefix;
 };
 
@@ -147,6 +149,8 @@ struct exclude_list_item
  *
  * Note: this list should be kept in sync with the filter lists in pg_rewind's
  * filemap.c.
+ *
+ * 排除其他目录
  */
 static const char *const excludeDirContents[] =
 {
@@ -187,6 +191,7 @@ static const char *const excludeDirContents[] =
 
 /*
  * List of files excluded from backups.
+ * 从备份中排除的文件列表
  */
 static const struct exclude_list_item excludeFiles[] =
 {
@@ -252,6 +257,7 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 	Assert(CurrentResourceOwner == NULL);
 	CurrentResourceOwner = ResourceOwnerCreate(NULL, "base backup");
 
+	// 获取是否在系统回复中
 	backup_started_in_recovery = RecoveryInProgress();
 
 	InitializeBackupManifest(&manifest, opt->manifest,
@@ -283,6 +289,7 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 		tablespaceinfo *newti;
 
 		/* If this is an incremental backup, execute preparatory steps. */
+		/* 如果这是增量备份，则执行准备步骤。 */
 		if (ib != NULL)
 			PrepareForIncrementalBackup(ib, backup_state);
 
@@ -345,6 +352,7 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 				}
 
 				/* Then the bulk of the files... */
+				/* 然后是大部分文件... */
 				sendDir(sink, ".", 1, false, state.tablespaces,
 						sendtblspclinks, &manifest, InvalidOid, ib);
 
@@ -1201,8 +1209,10 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 	struct dirent *de;
 	char		pathbuf[MAXPGPATH * 2];
 	struct stat statbuf;
+	// 空间大小
 	int64		size = 0;
 	const char *lastDir;		/* Split last dir from parent path. */
+	// 目录是否包含关系(数据文件)
 	bool		isRelationDir = false;	/* Does directory contain relations? */
 	bool		isGlobalDir = false;
 	Oid			dboid = InvalidOid;
@@ -1211,8 +1221,11 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 	/*
 	 * Since this array is relatively large, avoid putting it on the stack.
 	 * But we don't need it at all if this is not an incremental backup.
+	 *
+	 * 由于这个数组比较大，避免将其放入堆栈。 但如果这不是增量备份，我们根本不需要它。
 	 */
 	if (ib != NULL)
+		// 相对块号
 		relative_block_numbers = palloc(sizeof(BlockNumber) * RELSEG_SIZE);
 
 	/*
@@ -1221,19 +1234,27 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 	 *
 	 * Start by finding the location of the delimiter between the parent path
 	 * and the current path.
+	 *
+	 * 确定当前路径是否是可以包含关系的数据库目录
+	 *
+	 * 首先查找父路径和当前路径之间的分隔符的位置。
 	 */
 	lastDir = last_dir_separator(path);
 
 	/* Does this path look like a database path (i.e. all digits)? */
+	/* 该路径看起来像数据库路径吗（即全是数字）？ */
 	if (lastDir != NULL &&
 		strspn(lastDir + 1, "0123456789") == strlen(lastDir + 1))
 	{
 		/* Part of path that contains the parent directory. */
+		/* 包含父目录的路径部分。 */
 		int			parentPathLen = lastDir - path;
 
 		/*
 		 * Mark path as a database directory if the parent path is either
 		 * $PGDATA/base or a tablespace version path.
+		 *
+		 * 如果父路径是 $PGDATA/base 或表空间版本路径，则将路径标记为数据库目录。
 		 */
 		if (strncmp(path, "./base", parentPathLen) == 0 ||
 			(parentPathLen >= (sizeof(TABLESPACE_VERSION_DIRECTORY) - 1) &&
@@ -1251,6 +1272,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		isGlobalDir = true;
 	}
 
+	// 分配目录结构
 	dir = AllocateDir(path);
 	while ((de = ReadDir(dir, path)) != NULL)
 	{
@@ -1262,10 +1284,12 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		bool		isRelationFile = false;
 
 		/* Skip special stuff */
+		/* 跳过 "." ".." */
 		if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
 			continue;
 
 		/* Skip temporary files */
+		/* 跳过临时文件 */
 		if (strncmp(de->d_name,
 					PG_TEMP_FILE_PREFIX,
 					strlen(PG_TEMP_FILE_PREFIX)) == 0)
@@ -1282,6 +1306,11 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		 * started while still in recovery, the server wasn't promoted.
 		 * do_pg_backup_stop() will check that too, but it's better to stop
 		 * the backup early than continue to the end and fail there.
+		 * 
+		 * 检查邮政局长是否已向我们发出退出信号，并在这种情况下因错误而中止
+		 * 上面的错误处理程序将为我们调用 do_pg_abort_backup()
+		 * 另请检查备份是否在恢复期间启动，服务器是否未升级
+		 * do_pg_backup_stop() 也会检查这一点，但最好尽早停止备份，而不是继续到最后并在那里失败
 		 */
 		CHECK_FOR_INTERRUPTS();
 		if (RecoveryInProgress() != backup_started_in_recovery)
@@ -1293,6 +1322,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 							 "Try taking another online backup.")));
 
 		/* Scan for files that should be excluded */
+		/* 扫描应排除的文件 */
 		excludeFound = false;
 		for (excludeIdx = 0; excludeFiles[excludeIdx].name != NULL; excludeIdx++)
 		{
@@ -1309,11 +1339,14 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		}
 
 		if (excludeFound)
+			// 跳过排除文件
 			continue;
 
 		/*
 		 * If there could be non-temporary relation files in this directory,
 		 * try to parse the filename.
+		 *
+		 * 如果该目录中可能存在非临时关系文件，请尝试解析文件名。
 		 */
 		if (isRelationDir)
 			isRelationFile =
@@ -1322,6 +1355,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 													&relForkNum, &segno);
 
 		/* Exclude all forks for unlogged tables except the init fork */
+		/* 排除除 init 分叉之外的未记录表的所有分叉 */
 		if (isRelationFile && relForkNum != INIT_FORKNUM)
 		{
 			char		initForkFile[MAXPGPATH];
@@ -1329,6 +1363,9 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 			/*
 			 * If any other type of fork, check if there is an init fork with
 			 * the same RelFileNumber. If so, the file can be excluded.
+			 *
+			 * 如果有任何其他类型的 fork，请检查是否存在具有相同 RelFileNumber 的 init fork
+			 * 如果是这样，则可以排除该文件
 			 */
 			snprintf(initForkFile, sizeof(initForkFile), "%s/%u_init",
 					 path, relfilenumber);
@@ -1344,6 +1381,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		}
 
 		/* Exclude temporary relations */
+		/* 排除临时关系 */
 		if (OidIsValid(dboid) && looks_like_temp_rel_name(de->d_name))
 		{
 			elog(DEBUG2,
@@ -1356,6 +1394,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, de->d_name);
 
 		/* Skip pg_control here to back up it last */
+		/* 这里跳过pg_control，最后备份它 */
 		if (strcmp(pathbuf, "./global/pg_control") == 0)
 			continue;
 
@@ -1372,6 +1411,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		}
 
 		/* Scan for directories whose contents should be excluded */
+		/* 扫描应排除其内容的目录 */
 		excludeFound = false;
 		for (excludeIdx = 0; excludeDirContents[excludeIdx] != NULL; excludeIdx++)
 		{
@@ -1393,6 +1433,9 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		 * We can skip pg_wal, the WAL segments need to be fetched from the
 		 * WAL archive anyway. But include it as an empty directory anyway, so
 		 * we get permissions right.
+		 *
+		 * 我们可以跳过 pg_wal，无论如何都需要从 WAL 存档中获取 WAL 段
+		 * 但无论如何将其作为空目录包含在内，这样我们就可以获得正确的权限
 		 */
 		if (strcmp(pathbuf, "./pg_wal") == 0)
 		{
@@ -1414,6 +1457,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		}
 
 		/* Allow symbolic links in pg_tblspc only */
+		/* 仅允许 pg_tblspc 中的符号链接 */
 		if (strcmp(path, "./pg_tblspc") == 0 && S_ISLNK(statbuf.st_mode))
 		{
 			char		linkpath[MAXPGPATH];
@@ -1471,6 +1515,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 
 			/*
 			 * skip sending directories inside pg_tblspc, if not required.
+			 * 如果不需要，跳过在 pg_tblspc 内发送目录。
 			 */
 			if (strcmp(pathbuf, "./pg_tblspc") == 0 && !sendtblspclinks)
 				skip_this_dir = true;
@@ -1481,6 +1526,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		}
 		else if (S_ISREG(statbuf.st_mode))
 		{
+			// 常规文件
 			bool		sent = false;
 			unsigned	num_blocks_required = 0;
 			unsigned	truncation_block_length = 0;
@@ -1490,6 +1536,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 
 			if (ib != NULL && isRelationFile)
 			{
+				// 是 base 里的文件
 				Oid			relspcoid;
 				char	   *lookup_path;
 
@@ -1508,6 +1555,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 					lookup_path = pstrdup(tarfilename);
 				}
 
+				// 获取文件备份方式
 				method = GetFileBackupMethod(ib, lookup_path, dboid, relspcoid,
 											 relfilenumber, relForkNum,
 											 segno, statbuf.st_size,
@@ -1516,6 +1564,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 											 &truncation_block_length);
 				if (method == BACK_UP_FILE_INCREMENTALLY)
 				{
+					// 获取增量大小
 					statbuf.st_size =
 						GetIncrementalFileSize(num_blocks_required);
 					snprintf(tarfilenamebuf, sizeof(tarfilenamebuf),
@@ -1542,6 +1591,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 				size += statbuf.st_size;
 
 				/* Pad to a multiple of the tar block size. */
+				/* 填充为 tar 块大小的倍数。 */
 				size += tarPaddingBytesRequired(statbuf.st_size);
 
 				/* Size of the header for the file. */
@@ -1576,6 +1626,18 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
  *
  * Returns true if the file was successfully sent, false if 'missing_ok',
  * and the file did not exist.
+ *
+ * 给定成员，写入 TAR 标头并发送文件
+ *
+ * 如果 'missing_ok' 为 true，则在找不到文件时不会抛出错误
+ *
+ * 如果 dboid 不是 InvalidOid，则检测到的任何校验和失败都将报告给累积统计系统
+ *
+ * 如果要增量发送文件，则 num_incremental_blocks 应该是要发送的块数，incremental_blocks 是相对于当前段开头的块号数组
+ * 如果要发送整个文件，则incremental_blocks应为NULL，并且 num_incremental_blocks 可以为任何值，因为它将被忽略
+ *
+ * 如果文件已成功发送，则返回 true；如果“missing_ok”且文件不存在，则返回 false
+ *
  */
 static bool
 sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
@@ -1597,6 +1659,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 		elog(ERROR, "could not initialize checksum of file \"%s\"",
 			 readfilename);
 
+	// 打开事务文件
 	fd = OpenTransientFile(readfilename, O_RDONLY | PG_BINARY);
 	if (fd < 0)
 	{
@@ -1719,6 +1782,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 
 			/*
 			 * If we've read all the blocks, then it's time to stop.
+			 * 如果我们读完了所有的块，那么就该停止了
 			 */
 			if (ibindex >= num_incremental_blocks)
 				break;
@@ -1726,6 +1790,8 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 			/*
 			 * Read just one block, whichever one is the next that we're
 			 * supposed to include.
+			 *
+			 * 只读取一个块，无论我们应该包含的下一个块是什么
 			 */
 			relative_blkno = incremental_blocks[ibindex++];
 			cnt = read_file_data_into_buffer(sink, readfilename, fd,
@@ -1745,6 +1811,13 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 			 * It should be fine to treat this just as if the entire block had
 			 * been truncated away - i.e. fill this and all later blocks with
 			 * zeroes. WAL replay will fix things up.
+			 *
+			 * 如果我们得到部分读取，则必定意味着关系被截断
+			 * 最终，它应该被截断为 BLCKSZ 的倍数，因为只有关系文件才应该到达此路径，但我们可能会暂时观察到一个中间值
+			 *
+			 * 最好将其视为整个块已被截断 - 即用零填充此块以及后面的所有块
+			 * WAL 重播会解决问题
+			 *
 			 */
 			if (cnt < BLCKSZ)
 				break;
@@ -1784,6 +1857,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 				 (bytes_done % BLCKSZ != 0)));
 
 		/* Archive the data we just read. */
+		/* 将我们刚刚读取的数据归档 */
 		bbsink_archive_contents(sink, cnt);
 
 		/* Also feed it to the checksum machinery. */
@@ -1793,6 +1867,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 	}
 
 	/* If the file was truncated while we were sending it, pad it with zeros */
+	/* 如果文件在发送时被截断，则用零填充 */
 	while (bytes_done < statbuf->st_size)
 	{
 		size_t		remaining = statbuf->st_size - bytes_done;
@@ -1862,6 +1937,7 @@ read_file_data_into_buffer(bbsink *sink, const char *readfilename, int fd,
 	char	   *page;
 
 	/* Try to read some more data. */
+	/* 尝试读取更多数据 */
 	cnt = basebackup_read_file(fd, sink->bbs_buffer,
 							   Min(sink->bbs_buffer_length, length),
 							   offset, readfilename, true);
@@ -1879,6 +1955,7 @@ read_file_data_into_buffer(bbsink *sink, const char *readfilename, int fd,
 		page = sink->bbs_buffer + BLCKSZ * i;
 
 		/* If the page is OK, go on to the next one. */
+		/* 如果页面正常，则继续下一页。 */
 		if (verify_page_checksum(page, sink->bbs_state->startptr, blkno + i,
 								 &expected_checksum))
 			continue;
@@ -1920,6 +1997,7 @@ read_file_data_into_buffer(bbsink *sink, const char *readfilename, int fd,
 			continue;
 
 		/* Handle checksum failure. */
+		/* 处理校验和失败 */
 		(*checksum_failures)++;
 		if (*checksum_failures <= 5)
 			ereport(WARNING,

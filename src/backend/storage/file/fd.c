@@ -1377,6 +1377,7 @@ LruInsert(File file)
 
 /*
  * Release one kernel FD by closing the least-recently-used VFD.
+ * 通过关闭最近最少使用的 VFD 来释放一个内核 FD。
  */
 static bool
 ReleaseLruFile(void)
@@ -2864,6 +2865,7 @@ TryAgain:
 
 		desc->kind = AllocateDescDir;
 		desc->desc.dir = dir;
+		// 获取当前子事务 id
 		desc->create_subid = GetCurrentSubTransactionId();
 		numAllocatedDescs++;
 		return desc->desc.dir;

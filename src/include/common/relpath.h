@@ -21,6 +21,7 @@
 
 /*
  * RelFileNumber data type identifies the specific relation file name.
+ * RelFileNumber数据类型标识具体的关系文件名。
  */
 typedef Oid RelFileNumber;
 #define InvalidRelFileNumber		((RelFileNumber) InvalidOid)
@@ -43,6 +44,12 @@ typedef Oid RelFileNumber;
  * The main fork is always created, but in addition to that there can be
  * additional forks for storing various metadata. ForkNumber is used when
  * we need to refer to a specific fork in a relation.
+ *
+ * 分叉名称的东西
+ *
+ * 关系的物理存储由一个或多个分叉组成
+ * 主分叉始终会被创建，但除此之外还可以有其他分叉来存储各种元数据
+ * 当我们需要引用关系中的特定分叉时，使用 ForkNumber
  */
 typedef enum ForkNumber
 {

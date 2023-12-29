@@ -66,6 +66,14 @@
  * Entries in the mappings[] array are in no particular order.  We could
  * speed searching by insisting on OID order, but it really shouldn't be
  * worth the trouble given the intended size of the mapping sets.
+ *
+ * 地图文件是关键数据：我们没有自动方法来恢复它的丢失或损坏
+ * 我们使用 CRC 来检测损坏
+ * 由于文件的大小可能超过一个标准大小的磁盘扇区，因此我们不能依赖就地覆盖
+ * 相反，我们生成一个新文件并将其重命名到位，自动替换原始文件
+ * 
+ * mappings[] 数组中的条目没有特定的顺序
+ * 我们可以通过坚持 OID 顺序来加快搜索速度，但考虑到映射集的预期大小，这确实不值得这么麻烦
  */
 #define RELMAPPER_FILENAME		"pg_filenode.map"
 #define RELMAPPER_TEMP_FILENAME	"pg_filenode.map.tmp"

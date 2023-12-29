@@ -993,6 +993,12 @@ PostmasterMain(int argc, char *argv[])
 	 * Note: if using SysV shmem and/or semas, each postmaster startup will
 	 * normally choose the same IPC keys.  This helps ensure that we will
 	 * clean up dead IPC objects if the postmaster crashes and is restarted.
+	 *
+	 * 设置共享内存和信号量。
+	 *
+	 * 注意：如果使用 SysV shmem 和/或 semas
+	 * 每个 postmaster 启动通常会选择相同的 IPC 密钥
+	 * 这有助于确保如果 postmaster 崩溃并重新启动，我们将清理死的 IPC 对象。
 	 */
 	CreateSharedMemoryAndSemaphores();
 

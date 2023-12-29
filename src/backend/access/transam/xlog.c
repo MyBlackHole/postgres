@@ -510,6 +510,8 @@ typedef struct XLogCtlData
 	/*
 	 * SharedRecoveryState indicates if we're still in crash or archive
 	 * recovery.  Protected by info_lck.
+	 *
+	 * SharedRecoveryState 指示我们是否仍在崩溃或存档恢复中。 受 info_lck 保护。
 	 */
 	RecoveryState SharedRecoveryState;
 
@@ -6288,6 +6290,10 @@ PerformRecoveryXLogAction(void)
  *
  * Unlike testing InRecovery, this works in any process that's connected to
  * shared memory.
+ *
+ * 系统还在恢复中吗
+ *
+ * 与测试 InRecovery 不同，这适用于连接到共享内存的任何进程。
  */
 bool
 RecoveryInProgress(void)
@@ -9312,6 +9318,8 @@ do_pg_backup_stop(BackupState *state, bool waitforarchive)
  *
  * NB: This gets used as a PG_ENSURE_ERROR_CLEANUP callback and
  * before_shmem_exit handler, hence the odd-looking signature.
+ *
+ * 终止运行的备份
  */
 void
 do_pg_abort_backup(int code, Datum arg)

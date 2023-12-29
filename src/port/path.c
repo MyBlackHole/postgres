@@ -132,8 +132,10 @@ first_path_var_separator(const char *pathlist)
 /*
  *	last_dir_separator
  *
- * Find the location of the last directory separator, return
+ * Find the location of the last directory separator(分割符), return
  * NULL if not found.
+ *
+ * 查找最后一个目录分割符的位置，如果没有找到则返回NULL。
  */
 char *
 last_dir_separator(const char *filename)
