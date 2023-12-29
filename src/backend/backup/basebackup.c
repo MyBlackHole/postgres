@@ -66,6 +66,7 @@ typedef struct
 	bool		fastcheckpoint;
 	bool		nowait;
 	bool		includewal;
+	// 增量启用状态
 	bool		incremental;
 	uint32		maxrate;
 	bool		sendtblspcmapfile;
@@ -234,6 +235,11 @@ static const struct exclude_list_item excludeFiles[] =
  *
  * This is split out mainly to avoid complaints about "variable might be
  * clobbered by longjmp" from stupider versions of gcc.
+ *
+ * 实际上对指定的表空间进行基本备份
+ *
+ * 这样做主要是为了避免愚蠢版本的 gcc 抱怨“变量可能被 longjmp 破坏”
+ *
  */
 static void
 perform_base_backup(basebackup_options *opt, bbsink *sink,
@@ -796,6 +802,7 @@ parse_basebackup_options(List *options, basebackup_options *opt)
 						 errmsg("duplicate option \"%s\"", defel->defname)));
 			opt->incremental = defGetBoolean(defel);
 			if (opt->incremental && !summarize_wal)
+				// 增量必须要汇总预写日志
 				ereport(ERROR,
 						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 						 errmsg("incremental backups cannot be taken unless WAL summarization is enabled")));

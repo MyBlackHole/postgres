@@ -1870,15 +1870,18 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		int			nbytes;
 
 		/* Reject if server is too old. */
+		/*如果服务器太旧，则拒绝 */
 		if (serverVersion < MINIMUM_VERSION_FOR_WAL_SUMMARIES)
 			pg_fatal("server does not support incremental backup");
 
 		/* Open the file. */
+		// 打开文件
 		fd = open(incremental_manifest, O_RDONLY | PG_BINARY, 0);
 		if (fd < 0)
 			pg_fatal("could not open file \"%s\": %m", incremental_manifest);
 
 		/* Tell the server what we want to do. */
+		// 执行上传清单
 		if (PQsendQuery(conn, "UPLOAD_MANIFEST") == 0)
 			pg_fatal("could not send replication command \"%s\": %s",
 					 "UPLOAD_MANIFEST", PQerrorMessage(conn));
@@ -1894,6 +1897,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		}
 
 		/* Loop, reading from the file and sending the data to the server. */
+		// 循环读取上传
 		while ((nbytes = read(fd, mbuf, sizeof mbuf)) > 0)
 		{
 			if (PQputCopyData(conn, mbuf, nbytes) < 0)
@@ -1906,6 +1910,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 			pg_fatal("could not read file \"%s\": %m", incremental_manifest);
 
 		/* End the COPY operation. */
+		// 上传结束
 		if (PQputCopyEnd(conn, NULL) < 0)
 			pg_fatal("could not send end-of-COPY: %s",
 					 PQerrorMessage(conn));

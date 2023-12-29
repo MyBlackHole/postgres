@@ -151,6 +151,7 @@ static pg_noinline int internal_flush_buffer(const char *buf, size_t *start,
 static int	Lock_AF_UNIX(const char *unixSocketDir, const char *unixSocketPath);
 static int	Setup_AF_UNIX(const char *sock_path);
 
+// pg 命令 sock 处理操作集
 static const PQcommMethods PqCommSocketMethods = {
 	.comm_reset = socket_comm_reset,
 	.flush = socket_flush,
@@ -1319,6 +1320,8 @@ internal_putbytes(const char *s, size_t len)
  *
  *		returns 0 if OK, EOF if trouble
  * --------------------------------
+ *
+ *  刷洗等待输出
  */
 static int
 socket_flush(void)

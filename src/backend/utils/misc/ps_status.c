@@ -26,6 +26,7 @@
 extern char **environ;
 
 /* GUC variable */
+// 全局用户配置-修改进程名
 bool		update_process_title = DEFAULT_UPDATE_PROCESS_TITLE;
 
 /*

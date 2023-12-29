@@ -36,11 +36,13 @@ typedef struct IdentifySystemCmd
 
 /* ----------------------
  *		BASE_BACKUP command
+ *		备份命令
  * ----------------------
  */
 typedef struct BaseBackupCmd
 {
 	NodeTag		type;
+	// 参数
 	List	   *options;
 } BaseBackupCmd;
 

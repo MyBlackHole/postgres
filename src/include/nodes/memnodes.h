@@ -116,20 +116,34 @@ typedef struct MemoryContextMethods
 
 typedef struct MemoryContextData
 {
+	// 没有该类型的节点
 	pg_node_attr(abstract)		/* there are no nodes of this type */
 
+	// 识别准确的上下文类型
 	NodeTag		type;			/* identifies exact kind of context */
 	/* these two fields are placed here to minimize alignment wastage: */
+	/* 这两个字段放置在这里是为了最大限度地减少对齐浪费：*/
+	// T = 自上次重置后未分配空间
 	bool		isReset;		/* T = no space alloced since last reset */
+	// 允许 palloc 在关键部分
 	bool		allowInCritSection; /* allow palloc in critical section */
+	// 跟踪为此上下文分配的内存
 	Size		mem_allocated;	/* track memory allocated for this context */
+	// 虚函数表
 	const MemoryContextMethods *methods;	/* virtual function table */
+	// 如果没有父级则为 NULL（顶级上下文）
 	MemoryContext parent;		/* NULL if no parent (toplevel context) */
+	// 子链表头
 	MemoryContext firstchild;	/* head of linked list of children */
+	// 前一个节点
 	MemoryContext prevchild;	/* previous child of same parent */
+	// 下一个节点
 	MemoryContext nextchild;	/* next child of same parent */
+	// 上下文名称（仅用于调试）
 	const char *name;			/* context name (just for debugging) */
+	// 上下文 ID（如果有）（仅用于调试）
 	const char *ident;			/* context ID if any (just for debugging) */
+	// 重置/删除回调列表
 	MemoryContextCallback *reset_cbs;	/* list of reset/delete callbacks */
 } MemoryContextData;
 

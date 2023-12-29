@@ -40,12 +40,18 @@
  */
 typedef struct XLogRecord
 {
+	// 整个记录的总长度
 	uint32		xl_tot_len;		/* total len of entire record */
+	// 事务 id
 	TransactionId xl_xid;		/* xact id */
+	// ptr 到日志中的上一条记录
 	XLogRecPtr	xl_prev;		/* ptr to previous record in log */
+	// 标志位，见下文
 	uint8		xl_info;		/* flag bits, see below */
+	// 该记录的资源管理器
 	RmgrId		xl_rmid;		/* resource manager for this record */
 	/* 2 bytes of padding here, initialize to zero */
+	/* 这里填充2个字节，初始化为零*/
 	pg_crc32c	xl_crc;			/* CRC for this record */
 
 	/* XLogRecordBlockHeaders and XLogRecordDataHeader follow, no padding */

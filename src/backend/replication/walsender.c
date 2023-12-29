@@ -151,6 +151,7 @@ static XLogReaderState *xlogreader = NULL;
  * 否则，两个值都将为 NULL。
  */
 static IncrementalBackupInfo *uploaded_manifest = NULL;
+// 备份清单上传接收内存上下文
 static MemoryContext uploaded_manifest_mcxt = NULL;
 
 /*
@@ -680,6 +681,8 @@ SendTimeLineHistory(TimeLineHistoryCmd *cmd)
 
 /*
  * Handle UPLOAD_MANIFEST command.
+ *
+ * 处理上传备份清单
  */
 static void
 UploadManifest(void)
@@ -692,6 +695,8 @@ UploadManifest(void)
 	/*
 	 * parsing the manifest will use the cryptohash stuff, which requires a
 	 * resource owner
+	 *
+	 * 解析清单将使用 cryptohash 内容，这需要资源所有者
 	 */
 	Assert(CurrentResourceOwner == NULL);
 	CurrentResourceOwner = ResourceOwnerCreate(NULL, "base backup");
@@ -703,17 +708,21 @@ UploadManifest(void)
 	ib = CreateIncrementalBackupInfo(mcxt);
 
 	/* Send a CopyInResponse message */
+	// 发送复制响应消息
 	pq_beginmessage(&buf, 'G');
 	pq_sendbyte(&buf, 0);
 	pq_sendint16(&buf, 0);
 	pq_endmessage_reuse(&buf);
+	// 确保发送
 	pq_flush();
 
 	/* Receive packets from client until done. */
+	/* 从客户端接收数据包直到完成。 */
 	while (HandleUploadManifestPacket(&buf, &offset, ib))
 		;
 
 	/* Finish up manifest processing. */
+	/* 完成清单接收处理。 */
 	FinalizeIncrementalManifest(ib);
 
 	/*
@@ -723,6 +732,8 @@ UploadManifest(void)
 	 * We assume that MemoryContextDelete and MemoryContextSetParent won't
 	 * fail, and thus we shouldn't end up bailing out of here in such a way as
 	 * to leave dangling pointers.
+	 *
+	 * 丢弃所有旧的舱单信息并安排保留我们刚刚获得的新信息。
 	 */
 	if (uploaded_manifest_mcxt != NULL)
 		MemoryContextDelete(uploaded_manifest_mcxt);
@@ -744,6 +755,8 @@ UploadManifest(void)
  *
  * The return value is true if the caller should continue processing
  * additional packets and false if the UPLOAD_MANIFEST operation is complete.
+ *
+ * 处理在处理 UPLOAD_MANIFEST 操作期间收到的一个数据包。
  */
 static bool
 HandleUploadManifestPacket(StringInfo buf, off_t *offset,
@@ -782,6 +795,7 @@ HandleUploadManifestPacket(StringInfo buf, off_t *offset,
 	}
 
 	/* Now collect the message body */
+	/* 现在收集消息正文 */
 	if (pq_getmessage(buf, maxmsglen))
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),
@@ -789,6 +803,7 @@ HandleUploadManifestPacket(StringInfo buf, off_t *offset,
 	RESUME_CANCEL_INTERRUPTS();
 
 	/* Process the message */
+	// 处理消息
 	switch (mtype)
 	{
 		case 'd':				/* CopyData */
@@ -2189,9 +2204,12 @@ exec_replication_command(const char *cmd_string)
 
 		case T_UploadManifestCmd:
 			cmdtag = "UPLOAD_MANIFEST";
+			// 修改进程名
 			set_ps_display(cmdtag);
+			// 防止堵塞
 			PreventInTransactionBlock(true, cmdtag);
 			UploadManifest();
+			// 结束赋值命令
 			EndReplicationCommand(cmdtag);
 			break;
 

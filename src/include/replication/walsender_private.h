@@ -44,7 +44,9 @@ typedef struct WalSnd
 {
 	pid_t		pid;			/* this walsender's PID, or 0 if not active */
 
+	// 此 WAL 状态
 	WalSndState state;			/* this walsender's state */
+	// 至此 WAL 已经发送完毕
 	XLogRecPtr	sentPtr;		/* WAL has been sent up to this point */
 	bool		needreload;		/* does currently-open file need to be
 								 * reloaded? */
@@ -59,6 +61,7 @@ typedef struct WalSnd
 	XLogRecPtr	apply;
 
 	/* Measured lag times, or -1 for unknown/none. */
+	/* 测量的滞后时间，或 -1 表示未知/无 */
 	TimeOffset	writeLag;
 	TimeOffset	flushLag;
 	TimeOffset	applyLag;
@@ -70,6 +73,7 @@ typedef struct WalSnd
 	int			sync_standby_priority;
 
 	/* Protects shared variables in this structure. */
+	/* 保护该结构中的共享变量 */
 	slock_t		mutex;
 
 	/*
@@ -80,6 +84,7 @@ typedef struct WalSnd
 
 	/*
 	 * Timestamp of the last message received from standby.
+	 * 从待机状态接收到的最后一条消息的时间戳。
 	 */
 	TimestampTz replyTime;
 

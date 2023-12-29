@@ -145,6 +145,8 @@ MemoryContext CurrentMemoryContext = NULL;
 /*
  * Standard top-level contexts. For a description of the purpose of each
  * of these contexts, refer to src/backend/utils/mmgr/README
+ *
+ * 标准顶级上下文。 有关每个上下文的用途的描述，请参阅 src/backend/utils/mmgr/README
  */
 MemoryContext TopMemoryContext = NULL;
 MemoryContext ErrorContext = NULL;
@@ -814,6 +816,7 @@ void
 MemoryContextStats(MemoryContext context)
 {
 	/* Hard-wired limits are usually good enough */
+	/* 对孩子数量的硬性限制通常就足够了 */
 	MemoryContextStatsDetail(context, 100, 100, true);
 }
 
@@ -1209,6 +1212,12 @@ MemoryContextAlloc(MemoryContext context, Size size)
  *
  *	We could just call MemoryContextAlloc then clear the memory, but this
  *	is a very common combination, so we provide the combined operation.
+ *
+ * 内存上下文分配, 初始化为零
+ * 与 MemoryContextAlloc 类似，但清除分配的内存
+ *
+ * 我们可以直接调用MemoryContextAlloc然后清除内存，但这是一个非常常见的组合，因此我们提供了组合操作。
+ * 
  */
 void *
 MemoryContextAllocZero(MemoryContext context, Size size)
@@ -1220,6 +1229,7 @@ MemoryContextAllocZero(MemoryContext context, Size size)
 
 	context->isReset = false;
 
+	// 分配空间
 	ret = context->methods->alloc(context, size, 0);
 
 	VALGRIND_MEMPOOL_ALLOC(context, ret, size);

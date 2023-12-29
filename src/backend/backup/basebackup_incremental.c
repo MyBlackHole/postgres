@@ -189,6 +189,9 @@ CreateIncrementalBackupInfo(MemoryContext mcxt)
 	 * the data directory, but a fresh initdb creates almost 1000 files as of
 	 * this writing, so it seems to make sense for our estimate to
 	 * substantially higher.
+	 *
+	 * 很难猜测“典型”安装在数据目录中会有多少个文件，但截至撰写本文时，
+	 * 新的 initdb 创建了近 1000 个文件，因此我们的估计值大幅提高似乎是有意义的。
 	 */
 	ib->manifest_files = backup_file_create(mcxt, 10000, NULL);
 
@@ -212,6 +215,9 @@ CreateIncrementalBackupInfo(MemoryContext mcxt)
  * Before taking an incremental backup, the caller must supply the backup
  * manifest from a prior backup. Each chunk of manifest data received
  * from the client should be passed to this function.
+ *
+ * 在进行增量备份之前，调用者必须提供先前备份的备份清单
+ * 从客户端接收到的每个清单数据块都应传递给此函数。
  */
 void
 AppendIncrementalManifestData(IncrementalBackupInfo *ib, const char *data,
@@ -503,6 +509,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	/*
 	 * Wait for WAL summarization to catch up to the backup start LSN (but
 	 * time out if it doesn't do so quickly enough).
+	 *
+	 * 等待 WAL 汇总赶上备份起始 LSN（但如果不够快则超时）。
 	 */
 	initial_time = current_time = GetCurrentTimestamp();
 	while (1)
@@ -515,17 +523,24 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * but we'd like the warnings about how long we've been waiting to say
 		 * 10 seconds, 20 seconds, 30 seconds, 40 seconds ... without ever
 		 * drifting to something that is not a multiple of ten.
+		 *
+		 * 调整等待时间以防止漂移
+		 * 这并不重要，但我们希望收到关于我们等待说 10 秒、20 秒、30 秒、40 秒......的时间的警告，而不会漂移到不是 10 的倍数的东西 。
 		 */
 		timeout_in_ms -=
 			TimestampDifferenceMilliseconds(initial_time, current_time) %
 			timeout_in_ms;
 
 		/* Wait for up to 10 seconds. */
+		/* 等待最多 10 秒 */
 		summarized_lsn = WaitForWalSummarization(backup_state->startpoint,
 												 timeout_in_ms, &pending_lsn);
 
 		/* If WAL summarization has progressed sufficiently, stop waiting. */
+		/* 如果 WAL 汇总已充分进行，则停止等待 */
 		if (summarized_lsn >= backup_state->startpoint)
+			// 汇总 lsn 大于备份开始位置
+			// 可以退出循环
 			break;
 
 		/*
@@ -533,6 +548,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * progression of pending_lsn. If pending_lsn is not advancing, that
 		 * means that not only are no new files appearing on disk, but we're
 		 * not even incorporating new records into the in-memory state.
+		 *
+		 * 跟踪未发生挂起_lsn 进展的周期数
+		 * 如果pending_lsn没有前进，这意味着不仅没有新文件出现在磁盘上，而且我们甚至没有将新记录合并到内存状态中。
 		 */
 		if (pending_lsn > prior_pending_lsn)
 		{

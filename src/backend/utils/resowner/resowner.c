@@ -408,6 +408,11 @@ ResourceOwnerReleaseAll(ResourceOwner owner, ResourceReleasePhase phase,
  *
  * All ResourceOwner objects are kept in TopMemoryContext, since they should
  * only be freed explicitly.
+ *
+ * 资源所有者创建
+ * 创建一个空的资源所有者。
+ *
+ * 所有 ResourceOwner 对象都保存在 TopMemoryContext 中，因为它们只能显式释放。
  */
 ResourceOwner
 ResourceOwnerCreate(ResourceOwner parent, const char *name)

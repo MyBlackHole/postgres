@@ -192,6 +192,7 @@ struct XLogReaderState
 
 	/*
 	 * Opaque data for callbacks to use.  Not used by XLogReader.
+	 * 供回调使用的不透明数据。 XLogReader 不使用。
 	 */
 	void	   *private_data;
 
@@ -203,7 +204,9 @@ struct XLogReaderState
 	 * Start and end point of last record returned by XLogReadRecord().  These
 	 * are also available as record->lsn and record->next_lsn.
 	 */
+	// 最后读取的记录的开始
 	XLogRecPtr	ReadRecPtr;		/* start of last record read */
+	// 最后读取的记录的 end+1
 	XLogRecPtr	EndRecPtr;		/* end+1 of last record read */
 
 	/*

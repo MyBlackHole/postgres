@@ -33,6 +33,7 @@
 typedef struct
 {
 	void		(*comm_reset) (void);
+	// 刷洗
 	int			(*flush) (void);
 	int			(*flush_if_writable) (void);
 	bool		(*is_send_pending) (void);

@@ -1774,6 +1774,7 @@ ServerLoop(void)
 			MaybeStartWalReceiver();
 
 		/* If we need to start a WAL summarizer, try to do that now */
+		/* 如果我们需要启动 WAL 摘要器，请立即尝试这样做 */
 		MaybeStartWalSummarizer();
 
 		/* Get other worker processes running, if needed */
@@ -4099,6 +4100,7 @@ MaybeStartWalReceiver(void)
 /*
  * MaybeStartWalSummarizer
  *		Start the WAL summarizer process, if not running and our state allows.
+ * 如果未运行并且我们的状态允许，则启动 WAL 汇总器进程。
  */
 static void
 MaybeStartWalSummarizer(void)

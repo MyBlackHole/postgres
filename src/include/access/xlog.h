@@ -72,6 +72,7 @@ extern PGDLLIMPORT int XLogArchiveMode;
 // 预写等级
 typedef enum WalLevel
 {
+	// 最小 wal 不支持汇总
 	WAL_LEVEL_MINIMAL = 0,
 	WAL_LEVEL_REPLICA,
 	WAL_LEVEL_LOGICAL,
