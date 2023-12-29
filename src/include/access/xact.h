@@ -117,6 +117,8 @@ extern PGDLLIMPORT int MyXactFlags;
  * XACT_FLAGS_PIPELINING - set when we complete an extended-query-protocol
  * Execute message.  This is useful for detecting that an implicit transaction
  * block has been created via pipelining.
+ *
+ * XACT_FLAGS_PIPELINING - 当我们完成扩展查询协议执行消息时设置。 这对于检测是否通过管道创建了隐式事务块非常有用。
  */
 #define XACT_FLAGS_PIPELINING					(1U << 3)
 

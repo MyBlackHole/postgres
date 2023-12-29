@@ -983,6 +983,10 @@ parse_basebackup_options(List *options, basebackup_options *opt)
  * The function will put the system into backup mode like pg_backup_start()
  * does, so that the backup is consistent even though we read directly from
  * the filesystem, bypassing the buffer cache.
+ *
+ * SendBaseBackup() - 发送完整的基础备份
+ *
+ * 该函数将像 pg_backup_start() 一样将系统置于备份模式，这样即使我们绕过缓冲区缓存直接从文件系统读取，备份也是一致的
  */
 void
 SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
@@ -992,6 +996,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 	SessionBackupState status = get_backup_status();
 
 	if (status == SESSION_BACKUP_RUNNING)
+		// 备份运行中
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("a backup is already in progress in this session")));
@@ -1006,6 +1011,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 
 		snprintf(activitymsg, sizeof(activitymsg), "sending backup \"%s\"",
 				 opt.label);
+		// 修改名
 		set_ps_display(activitymsg);
 	}
 
@@ -1034,6 +1040,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 		sink = BaseBackupGetSink(opt.target_handle, sink);
 
 	/* Set up network throttling, if client requested it */
+	/* 设置网络限制 */
 	if (opt.maxrate > 0)
 		sink = bbsink_throttle_new(sink, opt.maxrate);
 
@@ -1046,6 +1053,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 		sink = bbsink_zstd_new(sink, &opt.compression_specification);
 
 	/* Set up progress reporting. */
+	/* 设置进度报告 */
 	sink = bbsink_progress_new(sink, opt.progress);
 
 	/*
@@ -1054,6 +1062,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 	 */
 	PG_TRY();
 	{
+		// 来吧,执行备份
 		perform_base_backup(&opt, sink, ib);
 	}
 	PG_FINALLY();

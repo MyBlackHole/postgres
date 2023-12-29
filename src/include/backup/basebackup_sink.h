@@ -101,6 +101,7 @@ struct bbsink
 	const bbsink_ops *bbs_ops;
 	char	   *bbs_buffer;
 	size_t		bbs_buffer_length;
+	// 处理链指针
 	bbsink	   *bbs_next;
 	bbsink_state *bbs_state;
 };
@@ -283,6 +284,7 @@ extern void bbsink_forward_end_backup(bbsink *sink, XLogRecPtr endptr,
 extern void bbsink_forward_cleanup(bbsink *sink);
 
 /* Constructors for various types of sinks. */
+/* 各种类型接收器的构造函数。 */
 extern bbsink *bbsink_copystream_new(bool send_to_client);
 extern bbsink *bbsink_gzip_new(bbsink *next, pg_compress_specification *);
 extern bbsink *bbsink_lz4_new(bbsink *next, pg_compress_specification *);

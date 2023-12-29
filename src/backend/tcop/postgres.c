@@ -4628,7 +4628,7 @@ PostgresMain(const char *dbname, const char *username)
 		/*
 		 * (3) read a command (loop blocks here)
 		 *
-		 * 读取命令
+		 * 读取命令类型(第一个字符)
 		 */
 		firstchar = ReadCommand(&input_message);
 
@@ -4694,6 +4694,7 @@ PostgresMain(const char *dbname, const char *username)
 
 					if (am_walsender)
 					{
+						// 执行复制系列
 						if (!exec_replication_command(query_string))
 							exec_simple_query(query_string);
 					}

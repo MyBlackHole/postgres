@@ -109,6 +109,7 @@
 WalSndCtlData *WalSndCtl = NULL;
 
 /* My slot in the shared memory array */
+/* 我在共享内存数组中的槽 */
 WalSnd	   *MyWalSnd = NULL;
 
 /* Global state */
@@ -143,6 +144,11 @@ static XLogReaderState *xlogreader = NULL;
  * uploaded_manifest_mcxt will point to the memory context that contains
  * that object and all of its subordinate data. Otherwise, both values will
  * be NULL.
+ *
+ * 如果使用 UPLOAD_MANIFEST 命令提供备份清单以准备增量备份
+ * 则 uploaded_manifest 将指向包含有关其上下文的信息的对象
+ * 而 uploaded_manifest_mcxt 将指向包含该对象及其所有从属数据的内存上下文 
+ * 否则，两个值都将为 NULL。
  */
 static IncrementalBackupInfo *uploaded_manifest = NULL;
 static MemoryContext uploaded_manifest_mcxt = NULL;
@@ -1972,6 +1978,10 @@ WalSndWaitForWal(XLogRecPtr loc)
  *
  * Returns true if the cmd_string was recognized as WalSender command, false
  * if not.
+ *
+ * 执行传入的复制命令。
+ *
+ * 如果 cmd_string 被识别为 WalSender 命令，则返回 true，否则返回 false。
  */
 bool
 exec_replication_command(const char *cmd_string)
@@ -2105,8 +2115,10 @@ exec_replication_command(const char *cmd_string)
 		case T_BaseBackupCmd:
 			cmdtag = "BASE_BACKUP";
 			set_ps_display(cmdtag);
+			// 防止堵塞
 			PreventInTransactionBlock(true, cmdtag);
 			SendBaseBackup((BaseBackupCmd *) cmd_node, uploaded_manifest);
+			// 结束复制命令
 			EndReplicationCommand(cmdtag);
 			break;
 
@@ -3805,6 +3817,7 @@ WalSndWaitStopping(void)
 }
 
 /* Set state for current walsender (only called in walsender) */
+/* 设置当前 walsender 的状态（仅在 walsender 中调用）*/
 void
 WalSndSetState(WalSndState state)
 {

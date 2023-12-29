@@ -35,6 +35,10 @@ extern void set_ps_display_with_len(const char *activity, size_t len);
  * set_ps_display
  *		inlined to allow strlen to be evaluated during compilation when
  *		passing string constants.
+ *
+ * 设置 ps 显示(进程名)
+ * 内联以允许在编译期间评估 strlen
+ * 传递字符串常量。
  */
 static inline void
 set_ps_display(const char *activity)

@@ -130,6 +130,10 @@ static TransactionId *ParallelCurrentXids;
  * so we remember to do certain things later on in the transaction. This is
  * globally accessible, so can be set from anywhere in the code that requires
  * recording flags.
+ *
+ * 用于记录顶层事务中发生的事件的各种标志位
+ * 这些标志仅保留在 MyXactFlags 中，目的是让我们记住稍后在事务中执行某些操作
+ * 这是全局可访问的，因此可以从需要记录标志的代码中的任何位置进行设置。
  */
 int			MyXactFlags;
 
@@ -151,14 +155,20 @@ typedef enum TransState
  *
  * Note: the subtransaction states are used only for non-topmost
  * transactions; the others appear only in the topmost transaction.
+ *
+ * 事务块状态枚举值
  */
 typedef enum TBlockState
 {
 	/* not-in-transaction-block states */
+	/* 不在交易块状态 */
+	// 空闲
 	TBLOCK_DEFAULT,				/* idle */
+	// 运行单查询事务
 	TBLOCK_STARTED,				/* running single-query transaction */
 
 	/* transaction block states */
+	/* 交易区块状态 */
 	TBLOCK_BEGIN,				/* starting transaction block */
 	TBLOCK_INPROGRESS,			/* live transaction */
 	TBLOCK_IMPLICIT_INPROGRESS, /* live transaction after implicit BEGIN */
@@ -170,6 +180,7 @@ typedef enum TBlockState
 	TBLOCK_PREPARE,				/* live xact, PREPARE received */
 
 	/* subtransaction states */
+	/* 子事务状态 */
 	TBLOCK_SUBBEGIN,			/* starting a subtransaction */
 	TBLOCK_SUBINPROGRESS,		/* live subtransaction */
 	TBLOCK_SUBRELEASE,			/* RELEASE received */
@@ -196,6 +207,7 @@ typedef struct TransactionStateData
 	int			savepointLevel; /* savepoint level */
 	TransState	state;			/* low-level state */
 	TBlockState blockState;		/* high-level state */
+	/* 事务嵌套深度 */
 	int			nestingLevel;	/* transaction nesting depth */
 	int			gucNestLevel;	/* GUC context nesting depth */
 	MemoryContext curTransactionContext;	/* my xact-lifetime context */
@@ -254,6 +266,7 @@ static TransactionStateData TopTransactionStateData = {
 static int	nUnreportedXids;
 static TransactionId unreportedXids[PGPROC_MAX_CACHED_SUBXIDS];
 
+// 当前事务状态
 static TransactionState CurrentTransactionState = &TopTransactionStateData;
 
 /*
@@ -3579,14 +3592,30 @@ AbortCurrentTransactionInternal(void)
  *	inside a function.  (We will always fail if this is false, but it's
  *	convenient to centralize the check here instead of making callers do it.)
  *	stmtType: statement type name, for error messages.
+ *
+ *	防止事务中堵塞
+ *
+ * 该例程将由不得在事务块内运行的语句调用，通常是因为它们具有不可回滚的副作用或进行内部提交。
+ *
+ * 如果该例程成功完成，则保证调用语句如果完成且没有错误，则其结果将立即提交。
+ *
+ * 如果我们已经启动了一个交易块，则发出错误； 如果我们似乎在用户定义的函数内运行（这可能会发出更多命令，并可能在语句完成后导致失败），也会发出错误。 子交易也被禁止。
+ *
+ * 我们还必须在 MyXactFlags 中设置 XACT_FLAGS_NEEDIMMEDIATECOMMIT，以确保 postgres.c 在语句完成后进行提交。
+ *
+ * isTopLevel：从 ProcessUtility 传递下来以确定我们是否在函数内部。 （如果这是错误的，我们总是会失败，但是在这里集中检查而不是让调用者这样做是很方便的。）
+ *
+ * stmtType：语句类型名称，用于错误消息。
  */
 void
 PreventInTransactionBlock(bool isTopLevel, const char *stmtType)
 {
 	/*
 	 * xact block already started?
+	 * xact (事务提交日志) 块已经启动了吗？
 	 */
 	if (IsTransactionBlock())
+		// 启动了
 		ereport(ERROR,
 				(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
 		/* translator: %s represents an SQL statement name */
@@ -3595,8 +3624,10 @@ PreventInTransactionBlock(bool isTopLevel, const char *stmtType)
 
 	/*
 	 * subtransaction?
+	 * 是否子事务
 	 */
 	if (IsSubTransaction())
+		// 是
 		ereport(ERROR,
 				(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
 		/* translator: %s represents an SQL statement name */
@@ -3605,8 +3636,10 @@ PreventInTransactionBlock(bool isTopLevel, const char *stmtType)
 
 	/*
 	 * inside a pipeline that has started an implicit transaction?
+	 * 在已启动隐式事务的管道内？
 	 */
 	if (MyXactFlags & XACT_FLAGS_PIPELINING)
+		// 启动了
 		ereport(ERROR,
 				(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
 		/* translator: %s represents an SQL statement name */
@@ -3615,6 +3648,7 @@ PreventInTransactionBlock(bool isTopLevel, const char *stmtType)
 
 	/*
 	 * inside a function call?
+	 * 在函数调用中？
 	 */
 	if (!isTopLevel)
 		ereport(ERROR,
@@ -4910,6 +4944,8 @@ AbortOutOfAnyTransaction(void)
 
 /*
  * IsTransactionBlock --- are we within a transaction block?
+ *
+ * 是否在交易块内
  */
 bool
 IsTransactionBlock(void)
@@ -4989,7 +5025,9 @@ IsSubTransaction(void)
 {
 	TransactionState s = CurrentTransactionState;
 
+	// 检查事务嵌套
 	if (s->nestingLevel >= 2)
+		// 是子事务
 		return true;
 
 	return false;

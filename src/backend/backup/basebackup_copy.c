@@ -89,6 +89,7 @@ static void SendCopyDone(void);
 static void SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli);
 static void SendTablespaceList(List *tablespaces);
 
+// 备份槽复制流操作集
 static const bbsink_ops bbsink_copystream_ops = {
 	.begin_backup = bbsink_copystream_begin_backup,
 	.begin_archive = bbsink_copystream_begin_archive,
@@ -103,6 +104,8 @@ static const bbsink_ops bbsink_copystream_ops = {
 
 /*
  * Create a new 'copystream' bbsink.
+ *
+ * 创建复制流对象
  */
 bbsink *
 bbsink_copystream_new(bool send_to_client)

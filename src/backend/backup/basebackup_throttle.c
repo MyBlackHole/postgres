@@ -20,21 +20,28 @@
 #include "storage/latch.h"
 #include "utils/timestamp.h"
 
+// 节流
 typedef struct bbsink_throttle
 {
 	/* Common information for all types of sink. */
+	/* 所有类型水槽的通用信息 */
 	bbsink		base;
 
 	/* The actual number of bytes, transfer of which may cause sleep. */
+	/* 实际字节数，传输可能会导致睡眠 */
+	// 网络限制
 	uint64		throttling_sample;
 
 	/* Amount of data already transferred but not yet throttled.  */
+	/* 已传输但尚未限制的数据量 */
 	int64		throttling_counter;
 
 	/* The minimum time required to transfer throttling_sample bytes. */
+	/* 传输 throttting_sample 字节所需的最短时间 */
 	TimeOffset	elapsed_min_unit;
 
 	/* The last check of the transfer rate. */
+	/* 最后一次检查传输速率 */
 	TimestampTz throttled_last;
 } bbsink_throttle;
 
@@ -63,6 +70,8 @@ static const bbsink_ops bbsink_throttle_ops = {
 /*
  * Create a new basebackup sink that performs throttling and forwards data
  * to a successor sink.
+ *
+ * 设置节流最大速率
  */
 bbsink *
 bbsink_throttle_new(bbsink *next, uint32 maxrate)

@@ -387,6 +387,9 @@ typedef union WALInsertLockPadded
 /*
  * Session status of running backup, used for sanity checks in SQL-callable
  * functions to start and stop backups.
+ *
+ * 运行备份的会话状态，用于 SQL 可调用函数中启动和停止备份的健全性检查。
+ *
  */
 static SessionBackupState sessionBackupState = SESSION_BACKUP_NONE;
 

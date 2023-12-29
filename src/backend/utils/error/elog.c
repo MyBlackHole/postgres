@@ -603,6 +603,7 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		 * children...
 		 */
 		fflush(NULL);
+		// 干掉自己
 		abort();
 	}
 
