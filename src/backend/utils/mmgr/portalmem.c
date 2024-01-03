@@ -51,6 +51,7 @@ typedef struct portalhashent
 	Portal		portal;
 } PortalHashEnt;
 
+// 全局门户哈希表
 static HTAB *PortalHashTable = NULL;
 
 #define PortalHashTableLookup(NAME, PORTAL) \
@@ -117,6 +118,8 @@ EnablePortalManager(void)
 	/*
 	 * use PORTALS_PER_USER as a guess of how many hash table entries to
 	 * create, initially
+	 *
+	 * 使用 PORTALS_PER_USER 来猜测最初要创建多少个哈希表条目
 	 */
 	PortalHashTable = hash_create("Portal hash", PORTALS_PER_USER,
 								  &ctl, HASH_ELEM | HASH_STRINGS);
@@ -178,6 +181,7 @@ CreatePortal(const char *name, bool allowDup, bool dupSilent)
 
 	Assert(PointerIsValid(name));
 
+	// 查找 key：name 的 value 
 	portal = GetPortalByName(name);
 	if (PortalIsValid(portal))
 	{
@@ -194,14 +198,17 @@ CreatePortal(const char *name, bool allowDup, bool dupSilent)
 	}
 
 	/* make new portal structure */
+	/* 制作新的门户结构 */
 	portal = (Portal) MemoryContextAllocZero(TopPortalContext, sizeof *portal);
 
 	/* initialize portal context; typically it won't store much */
+	/* 初始化门户上下文； 通常它不会存储太多*/
 	portal->portalContext = AllocSetContextCreate(TopPortalContext,
 												  "PortalContext",
 												  ALLOCSET_SMALL_SIZES);
 
 	/* create a resource owner for the portal */
+	/* 为门户创建资源所有者 */
 	portal->resowner = ResourceOwnerCreate(CurTransactionResourceOwner,
 										   "Portal");
 
@@ -219,9 +226,11 @@ CreatePortal(const char *name, bool allowDup, bool dupSilent)
 	portal->creation_time = GetCurrentStatementStartTimestamp();
 
 	/* put portal in table (sets portal->name) */
+	/* 将门户放入表中（设置门户->名称）*/
 	PortalHashTableInsert(portal, name);
 
 	/* for named portals reuse portal->name copy */
+	/* 对于命名门户，重用门户->名称副本 */
 	MemoryContextSetIdentifier(portal->portalContext, portal->name[0] ? portal->name : "<unnamed>");
 
 	return portal;
@@ -463,6 +472,7 @@ MarkPortalFailed(Portal portal)
 /*
  * PortalDrop
  *		Destroy the portal.
+ * 销毁门户
  */
 void
 PortalDrop(Portal portal, bool isTopCommit)

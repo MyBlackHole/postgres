@@ -1638,10 +1638,12 @@ ExecutePlan(EState *estate,
 	for (;;)
 	{
 		/* Reset the per-output-tuple exprcontext */
+		/* 重置每个输出元组 exprcontext */
 		ResetPerTupleExprContext(estate);
 
 		/*
 		 * Execute the plan and obtain a tuple
+		 * 执行计划并获得一个元组
 		 */
 		slot = ExecProcNode(planstate);
 

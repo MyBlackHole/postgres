@@ -681,6 +681,7 @@ pg_analyze_and_rewrite_fixedparams(RawStmt *parsetree,
 
 	/*
 	 * (1) Perform parse analysis.
+	 * 进行解析分析。
 	 */
 	if (log_parser_stats)
 		ResetUsage();
@@ -693,6 +694,7 @@ pg_analyze_and_rewrite_fixedparams(RawStmt *parsetree,
 
 	/*
 	 * (2) Rewrite the queries, as necessary
+	 * 根据需要重写查询
 	 */
 	querytree_list = pg_rewrite_query(query);
 
@@ -1212,15 +1214,23 @@ exec_simple_query(const char *query_string)
 		/*
 		 * Create unnamed portal to run the query or queries in. If there
 		 * already is one, silently drop it.
+		 *
+		 * 创建未命名的门户来运行一个或多个查询
+		 * 如果已经有一个，则默默地删除它。
 		 */
 		portal = CreatePortal("", true, true);
 		/* Don't display the portal in pg_cursors */
+		/* 不要在 pg_cursors 中显示门户 */
 		portal->visible = false;
 
 		/*
 		 * We don't have to copy anything into the portal, because everything
 		 * we are passing here is in MessageContext or the
 		 * per_parsetree_context, and so will outlive the portal anyway.
+		 *
+		 * 我们不必将任何内容复制到门户中
+		 * 因为我们在此处传递的所有内容都在 MessageContext 或 per_parsetree_context 中
+		 * 因此无论如何都会比门户寿命更长
 		 */
 		PortalDefineQuery(portal,
 						  NULL,
@@ -1231,6 +1241,7 @@ exec_simple_query(const char *query_string)
 
 		/*
 		 * Start the portal.  No parameters here.
+		 * 启动门户。 这里没有参数。
 		 */
 		PortalStart(portal, NULL, 0, InvalidSnapshot);
 
@@ -1258,6 +1269,7 @@ exec_simple_query(const char *query_string)
 
 		/*
 		 * Now we can create the destination receiver object.
+		 * 现在我们可以创建目标接收者对象。
 		 */
 		receiver = CreateDestReceiver(dest);
 		if (dest == DestRemote)
@@ -1265,11 +1277,14 @@ exec_simple_query(const char *query_string)
 
 		/*
 		 * Switch back to transaction context for execution.
+		 *
+		 * 切换回事务上下文执行。
 		 */
 		MemoryContextSwitchTo(oldcontext);
 
 		/*
 		 * Run the portal to completion, and then drop it (and the receiver).
+		 * 运行传送门直至完成，然后放下它（和接收器）。
 		 */
 		(void) PortalRun(portal,
 						 FETCH_ALL,
@@ -2125,6 +2140,7 @@ exec_execute_message(const char *portal_name, long max_rows)
 	}
 
 	/* Does the portal contain a transaction command? */
+	/* 门户是否包含交易命令？ */
 	is_xact_command = IsTransactionStmtList(portal->stmts);
 
 	/*

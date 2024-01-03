@@ -144,6 +144,7 @@ ProcessQuery(PlannedStmt *plan,
 
 	/*
 	 * Create the QueryDesc object
+	 * 创建查询描述对象
 	 */
 	queryDesc = CreateQueryDesc(plan, sourceText,
 								GetActiveSnapshot(), InvalidSnapshot,
@@ -151,11 +152,13 @@ ProcessQuery(PlannedStmt *plan,
 
 	/*
 	 * Call ExecutorStart to prepare the plan for execution
+	 * 开始准备执行
 	 */
 	ExecutorStart(queryDesc, 0);
 
 	/*
 	 * Run the plan to completion.
+	 * 执行计划直至完成。
 	 */
 	ExecutorRun(queryDesc, ForwardScanDirection, 0, true);
 
@@ -711,6 +714,7 @@ PortalRun(Portal portal, long count, bool isTopLevel, bool run_once,
 
 	/*
 	 * Check for improper portal use, and mark portal active.
+	 * 检查门户使用是否不当，并将门户标记为活动状态。
 	 */
 	MarkPortalActive(portal);
 
@@ -1213,6 +1217,8 @@ PortalRunMulti(Portal portal,
 	/*
 	 * Loop to handle the individual queries generated from a single parsetree
 	 * by analysis and rewrite.
+	 *
+	 * 循环处理通过分析和重写从单个解析树生成的各个查询。
 	 */
 	foreach(stmtlist_item, portal->stmts)
 	{

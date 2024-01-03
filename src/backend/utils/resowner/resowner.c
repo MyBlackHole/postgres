@@ -163,6 +163,7 @@ typedef struct ResourceOwnerData
  *****************************************************************************/
 
 ResourceOwner CurrentResourceOwner = NULL;
+// 当前事务资源所有者
 ResourceOwner CurTransactionResourceOwner = NULL;
 ResourceOwner TopTransactionResourceOwner = NULL;
 ResourceOwner AuxProcessResourceOwner = NULL;

@@ -55,6 +55,7 @@
 
 
 /* Hook for plugins to get control at end of parse analysis */
+/* 挂钩插件以在解析分析结束时获得控制权 */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
 
 static Query *transformOptionalSelectInto(ParseState *pstate, Node *parseTree);
@@ -99,6 +100,8 @@ static bool test_raw_expression_coverage(Node *node, void *context);
  * The result is a Query node.  Optimizable statements require considerable
  * transformation, while utility-type statements are simply hung off
  * a dummy CMD_UTILITY Query node.
+ *
+ * 分析原始解析树并将其转换为查询形式。
  */
 Query *
 parse_analyze_fixedparams(RawStmt *parseTree, const char *sourceText,
@@ -118,6 +121,7 @@ parse_analyze_fixedparams(RawStmt *parseTree, const char *sourceText,
 
 	pstate->p_queryEnv = queryEnv;
 
+	// 变换顶层结构
 	query = transformTopLevelStmt(pstate, parseTree);
 
 	if (IsQueryIdEnabled())
@@ -250,6 +254,7 @@ transformTopLevelStmt(ParseState *pstate, RawStmt *parseTree)
 	Query	   *result;
 
 	/* We're at top level, so allow SELECT INTO */
+	/* 我们处于顶层，因此允许 SELECT INTO */
 	result = transformOptionalSelectInto(pstate, parseTree->stmt);
 
 	result->stmt_location = parseTree->stmt_location;
@@ -316,6 +321,10 @@ transformStmt(ParseState *pstate, Node *parseTree)
 	 * We apply RAW_EXPRESSION_COVERAGE_TEST testing to basic DML statements;
 	 * we can't just run it on everything because raw_expression_tree_walker()
 	 * doesn't claim to handle utility statements.
+	 *
+	 * 我们对基本 DML 语句应用 RAW_EXPRESSION_COVERAGE_TEST 测试；
+	 * 我们不能只在所有内容上运行它
+	 * 因为 raw_expression_tree_walker() 并不声称可以处理实用程序语句。
 	 */
 #ifdef RAW_EXPRESSION_COVERAGE_TEST
 	switch (nodeTag(parseTree))
@@ -575,6 +584,8 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 /*
  * transformInsertStmt -
  *	  transform an Insert Statement
+ *
+ * 转换插入语句
  */
 static Query *
 transformInsertStmt(ParseState *pstate, InsertStmt *stmt)

@@ -136,6 +136,7 @@ typedef struct PortalData
 	const char *sourceText;		/* text of query (as of 8.4, never NULL) */
 	CommandTag	commandTag;		/* command tag for original query */
 	QueryCompletion qc;			/* command completion data for executed query */
+	// 计划清单列表
 	List	   *stmts;			/* list of PlannedStmts */
 	CachedPlan *cplan;			/* CachedPlan, if stmts are from one */
 
@@ -202,12 +203,15 @@ typedef struct PortalData
 
 	/* Presentation data, primarily used by the pg_cursors system view */
 	TimestampTz creation_time;	/* time at which this portal was defined */
+	/* 将此入口包含在 pg_cursors 中？ */
 	bool		visible;		/* include this portal in pg_cursors? */
 }			PortalData;
 
 /*
  * PortalIsValid
  *		True iff portal is valid.
+ *
+ * 真当且仅当门户有效
  */
 #define PortalIsValid(p) PointerIsValid(p)
 

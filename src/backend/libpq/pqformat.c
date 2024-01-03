@@ -523,6 +523,9 @@ pq_getmsgbytes(StringInfo msg, int datalen)
  *
  *		Same as above, except data is copied to caller's buffer.
  * --------------------------------
+ * pq_copymsgbytes - 从消息缓冲区复制原始数据
+ *
+ * 与上面相同，只是数据被复制到调用者的缓冲区。
  */
 void
 pq_copymsgbytes(StringInfo msg, char *buf, int datalen)

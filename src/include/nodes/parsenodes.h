@@ -2018,6 +2018,8 @@ typedef struct JsonArrayAgg
  *
  * This is irrelevant for query jumbling, as this is not used in parsed
  * queries.
+ *
+ * 任何一个语句的原始解析树的容器
  */
 typedef struct RawStmt
 {
@@ -3299,6 +3301,7 @@ typedef struct SecLabelStmt
 #define CURSOR_OPT_FAST_PLAN	0x0100	/* prefer fast-start plan */
 #define CURSOR_OPT_GENERIC_PLAN 0x0200	/* force use of generic plan */
 #define CURSOR_OPT_CUSTOM_PLAN	0x0400	/* force use of custom plan */
+// 并行模式 OK
 #define CURSOR_OPT_PARALLEL_OK	0x0800	/* parallel mode OK */
 
 typedef struct DeclareCursorStmt

@@ -115,18 +115,23 @@ typedef struct _DestReceiver DestReceiver;
 struct _DestReceiver
 {
 	/* Called for each tuple to be output: */
+	/* 调用每个要输出的元组： */
 	bool		(*receiveSlot) (TupleTableSlot *slot,
 								DestReceiver *self);
 	/* Per-executor-run initialization and shutdown: */
+	/* 每个执行程序运行的初始化和关闭： */
 	void		(*rStartup) (DestReceiver *self,
 							 int operation,
 							 TupleDesc typeinfo);
 	void		(*rShutdown) (DestReceiver *self);
 	/* Destroy the receiver object itself (if dynamically allocated) */
+	/* 销毁接收者对象本身（如果是动态分配的） */
 	void		(*rDestroy) (DestReceiver *self);
 	/* CommandDest code for this receiver */
+	/* 该接收器的命令目标代码 */
 	CommandDest mydest;
 	/* Private fields might appear beyond this point... */
+	/* 私有字段可能会出现在这一点之外... */
 };
 
 extern PGDLLIMPORT DestReceiver *None_Receiver; /* permanent receiver for
