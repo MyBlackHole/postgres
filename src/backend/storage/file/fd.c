@@ -2805,6 +2805,10 @@ FreeFile(FILE *file)
  *
  * Note we do not check close's return value --- it is up to the caller
  * to handle close errors.
+ *
+ * 关闭由“打开临时文件”返回的文件。
+ *
+ * 请注意，我们不检查 close 的返回值——由调用者来处理 close 错误。
  */
 int
 CloseTransientFile(int fd)

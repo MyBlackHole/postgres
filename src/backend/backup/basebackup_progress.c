@@ -39,6 +39,7 @@ static void bbsink_progress_begin_backup(bbsink *sink);
 static void bbsink_progress_archive_contents(bbsink *sink, size_t len);
 static void bbsink_progress_end_archive(bbsink *sink);
 
+// 进度操作集
 static const bbsink_ops bbsink_progress_ops = {
 	.begin_backup = bbsink_progress_begin_backup,
 	.begin_archive = bbsink_forward_begin_archive,
@@ -181,6 +182,7 @@ bbsink_progress_archive_contents(bbsink *sink, size_t len)
 
 /*
  * Advertise that we are waiting for the start-of-backup checkpoint.
+ * 通告我们正在等待备份开始检查点。
  */
 void
 basebackup_progress_wait_checkpoint(void)

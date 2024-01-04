@@ -99,6 +99,7 @@ typedef struct bbsink_state
 struct bbsink
 {
 	const bbsink_ops *bbs_ops;
+	// 缓冲数据
 	char	   *bbs_buffer;
 	// 缓存大小
 	size_t		bbs_buffer_length;
@@ -139,6 +140,17 @@ struct bbsink_ops
 	 * It's generally good if the buffer is as full as possible before the
 	 * archive_contents() callback is invoked, but it's not worth expending
 	 * extra cycles to make sure it's absolutely 100% full.
+	 *
+	 * 对于传输到 bbsink 的每个存档，将调用一次 begin_archive() 回调，
+	 * 调用一定次数的 archive_contents() 回调，
+	 * 然后调用一次 end_archive() 回调
+	 *
+	 * 在调用 archive_contents() 回调之前，
+	 * 调用者应将等于将作为 len 传递到 bbs_buffer 的字节数复制到 bbs_buffer，
+	 * 但不超过 bbs_buffer_length
+	 *
+	 * 如果在调用 archive_contents() 回调之前缓冲区尽可能满，
+	 * 通常是好的，但不值得花费额外的周期来确保它绝对 100% 满
 	 */
 	void		(*begin_archive) (bbsink *sink, const char *archive_name);
 	void		(*archive_contents) (bbsink *sink, size_t len);

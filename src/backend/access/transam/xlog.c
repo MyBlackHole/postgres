@@ -8724,6 +8724,8 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 	bool		backup_started_in_recovery;
 
 	Assert(state != NULL);
+
+	// 恢复中的备份开始
 	backup_started_in_recovery = RecoveryInProgress();
 
 	/*

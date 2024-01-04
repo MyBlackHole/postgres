@@ -42,6 +42,7 @@ typedef struct bbsink_copystream
 	bbsink		base;
 
 	/* Are we sending the archives to the client, or somewhere else? */
+	/* 我们是否将档案发送到客户端或其他地方？ */
 	bool		send_to_client;
 
 	/*
@@ -50,12 +51,16 @@ typedef struct bbsink_copystream
 	 * data) and then making base.bbs_buffer point to the second character so
 	 * that the rest of the data gets copied into the message just where we
 	 * want it.
+	 * 协议消息缓冲区
+	 *
+	 * base.bbs_buffer
 	 */
 	char	   *msgbuffer;
 
 	/*
 	 * When did we last report progress to the client, and how much progress
 	 * did we report?
+	 * 我们上次向客户报告进度是什么时候？我们报告了多少进度？
 	 */
 	TimestampTz last_progress_report_time;
 	uint64		bytes_done_at_last_time_check;
@@ -116,6 +121,7 @@ bbsink_copystream_new(bool send_to_client)
 	sink->send_to_client = send_to_client;
 
 	/* Set up for periodic progress reporting. */
+	/* 设置定期进度报告。 */
 	sink->last_progress_report_time = GetCurrentTimestamp();
 	sink->bytes_done_at_last_time_check = UINT64CONST(0);
 
@@ -124,6 +130,7 @@ bbsink_copystream_new(bool send_to_client)
 
 /*
  * Send start-of-backup wire protocol messages.
+ * 发送备份开始有线协议消息。
  */
 static void
 bbsink_copystream_begin_backup(bbsink *sink)
@@ -192,13 +199,16 @@ bbsink_copystream_archive_contents(bbsink *sink, size_t len)
 	uint64		targetbytes;
 
 	/* Send the archive content to the client, if appropriate. */
+	/* 如果合适的话，将存档内容发送到客户端。 */
 	if (mysink->send_to_client)
 	{
 		/* Add one because we're also sending a leading type byte. */
+		/* 加一，因为我们还要发送一个前导类型字节。 */
 		pq_putmessage('d', mysink->msgbuffer, len + 1);
 	}
 
 	/* Consider whether to send a progress report to the client. */
+	/* 考虑是否向客户端发送进度报告。 */
 	targetbytes = mysink->bytes_done_at_last_time_check
 		+ PROGRESS_REPORT_BYTE_INTERVAL;
 	if (targetbytes <= state->bytes_done)

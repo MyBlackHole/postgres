@@ -22,15 +22,19 @@
 typedef struct bbsink_gzip
 {
 	/* Common information for all types of sink. */
+	/* 所有类型水槽的通用信息 */
 	bbsink		base;
 
 	/* Compression level. */
+	/* 压缩级别 */
 	int			compresslevel;
 
 	/* Compressed data stream. */
+	/* 压缩数据流 */
 	z_stream	zstream;
 
 	/* Number of bytes staged in output buffer. */
+	/* 输出缓冲区中暂存的字节数 */
 	size_t		bytes_written;
 } bbsink_gzip;
 
@@ -178,6 +182,7 @@ bbsink_gzip_archive_contents(bbsink *sink, size_t len)
 		int			res;
 
 		/* Write output data into unused portion of output buffer. */
+		/* 将输出数据写入输出缓冲区的未使用部分 */
 		Assert(mysink->bytes_written < mysink->base.bbs_next->bbs_buffer_length);
 		zs->next_out = (uint8 *)
 			mysink->base.bbs_next->bbs_buffer + mysink->bytes_written;
@@ -195,17 +200,21 @@ bbsink_gzip_archive_contents(bbsink *sink, size_t len)
 		 * memory clobber; we use elog() rather than Assert() here out of an
 		 * abundance of caution.
 		 */
+		// 执行压缩
 		res = deflate(zs, Z_NO_FLUSH);
 		if (res == Z_STREAM_ERROR)
 			elog(ERROR, "could not compress data: %s", zs->msg);
 
 		/* Update our notion of how many bytes we've written. */
+		/* 更新我们已经写入了多少字节的概念 */
 		mysink->bytes_written =
 			mysink->base.bbs_next->bbs_buffer_length - zs->avail_out;
 
 		/*
 		 * If the output buffer is full, it's time for the next sink to
 		 * process the contents.
+		 *
+		 * 如果输出缓冲区已满，则下一个接收器将处理内容。
 		 */
 		if (mysink->bytes_written >= mysink->base.bbs_next->bbs_buffer_length)
 		{

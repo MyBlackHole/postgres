@@ -21,15 +21,19 @@
 typedef struct bbsink_server
 {
 	/* Common information for all types of sink. */
+	/* 所有类型水槽的通用信息。 */
 	bbsink		base;
 
 	/* Directory in which backup is to be stored. */
+	/* 要存储备份的目录。 */
 	char	   *pathname;
 
 	/* Currently open file (or 0 if nothing open). */
+	/* 当前打开的文件（如果没有打开，则为 0） */
 	File		file;
 
 	/* Current file position. */
+	/* 当前文件位置。 */
 	off_t		filepos;
 } bbsink_server;
 
@@ -55,6 +59,7 @@ static const bbsink_ops bbsink_server_ops = {
 
 /*
  * Create a new 'server' bbsink.
+ * 创建一个新的“服务器”bbsink。
  */
 bbsink *
 bbsink_server_new(bbsink *next, char *pathname)
@@ -155,6 +160,7 @@ bbsink_server_begin_archive(bbsink *sink, const char *archive_name)
 
 /*
  * Write the data to the output file.
+ * 将数据写入输出文件。
  */
 static void
 bbsink_server_archive_contents(bbsink *sink, size_t len)

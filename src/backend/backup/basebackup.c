@@ -70,6 +70,7 @@ typedef struct
 	bool		incremental;
 	uint32		maxrate;
 	bool		sendtblspcmapfile;
+	/* 我们是否将档案发送到客户端或其他地方？ */
 	bool		send_to_client;
 	bool		use_copytblspc;
 	BaseBackupTargetHandle *target_handle;
@@ -272,10 +273,13 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 	total_checksum_failures = 0;
 
 	/* Allocate backup related variables. */
+	// 分配备份相关的变量
 	backup_state = (BackupState *) palloc0(sizeof(BackupState));
 	tablespace_map = makeStringInfo();
 
+	// 备份进度等待检查点
 	basebackup_progress_wait_checkpoint();
+	// 备份开始
 	do_pg_backup_start(opt->label, opt->fastcheckpoint, &state.tablespaces,
 					   backup_state, tablespace_map);
 
@@ -1060,6 +1064,7 @@ SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
 		sink = bbsink_throttle_new(sink, opt.maxrate);
 
 	/* Set up server-side compression, if client requested it */
+	/* 如果客户端请求，设置服务器端压缩 */
 	if (opt.compression == PG_COMPRESSION_GZIP)
 		sink = bbsink_gzip_new(sink, &opt.compression_specification);
 	else if (opt.compression == PG_COMPRESSION_LZ4)
@@ -1734,6 +1739,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 		}
 
 		/* Flush out any data still in the buffer so it's again empty. */
+		/* 清除仍在缓冲区中的所有数据，使其再次为空。 */
 		if (header_bytes_done > 0)
 		{
 			bbsink_archive_contents(sink, header_bytes_done);
@@ -1755,6 +1761,10 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 	 * file could be longer, if it was extended while we were sending it, but
 	 * for a base backup we can ignore such extended data. It will be restored
 	 * from WAL.
+	 *
+	 * 循环直到我们读取调用者告诉我们期望的数据量
+	 * 如果我们在发送文件时扩展了文件，则文件可能会更长，但对于基本备份，我们可以忽略此类扩展数据
+	 * 它将从 WAL 恢复
 	 */
 	while (1)
 	{
@@ -1896,6 +1906,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 	 */
 	_tarWritePadding(sink, bytes_done);
 
+	// 关闭打开的临时文件
 	CloseTransientFile(fd);
 
 	if (checksum_failures > 1)
@@ -1911,6 +1922,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 
 	total_checksum_failures += checksum_failures;
 
+	// 添加文件到备份清单
 	AddFileToBackupManifest(manifest, spcoid, tarfilename, statbuf->st_size,
 							(pg_time_t) statbuf->st_mtime, &checksum_ctx);
 
