@@ -20,6 +20,8 @@
  * The first two MultiXactId values are reserved to store the truncation Xid
  * and epoch of the first segment, so we start assigning multixact values from
  * 2.
+ *
+ * 前两个 MultiXactId 值被保留用于存储第一个段的截断 Xid 和纪元，因此我们从 2 开始分配 multixact 值。
  */
 #define InvalidMultiXactId	((MultiXactId) 0)
 #define FirstMultiXactId	((MultiXactId) 1)
@@ -53,9 +55,12 @@ typedef enum
 			((status) > MultiXactStatusForUpdate)
 
 
+// 单个事务
 typedef struct MultiXactMember
 {
+	// 事务 id
 	TransactionId xid;
+	// 事务状态
 	MultiXactStatus status;
 } MultiXactMember;
 
@@ -85,10 +90,12 @@ typedef struct xl_multixact_truncate
 	Oid			oldestMultiDB;
 
 	/* to-be-truncated range of multixact offsets */
+	/* 待截断的 multixact 偏移量范围 */
 	MultiXactId startTruncOff;	/* just for completeness' sake */
 	MultiXactId endTruncOff;
 
 	/* to-be-truncated range of multixact members */
+	/* 待截断的 multixact 成员范围 */
 	MultiXactOffset startTruncMemb;
 	MultiXactOffset endTruncMemb;
 } xl_multixact_truncate;

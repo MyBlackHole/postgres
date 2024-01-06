@@ -31,21 +31,38 @@
  * Body of CheckPoint XLOG records.  This is declared here because we keep
  * a copy of the latest one in pg_control for possible disaster recovery.
  * Changing this struct requires a PG_CONTROL_VERSION bump.
+ *
+ * CheckPoint XLOG 记录的主体
+ * 之所以在这里声明，是因为我们在 pg_control 中保留了一份最新副本，以备可能的灾难恢复之用
+ * 更改此结构需要 PG_CONTROL_VERSION 碰撞
  */
 typedef struct CheckPoint
 {
+	// 当我们开始创建CheckPoint（即REDO起点）时
+	// 下一个RecPtr可用
 	XLogRecPtr	redo;			/* next RecPtr available when we began to
 								 * create CheckPoint (i.e. REDO start point) */
+	// 当前时间线
 	TimeLineID	ThisTimeLineID; /* current TLI */
+
+	// 上一个 TLI，如果此记录开始新时间线（否则等于 ThisTimeLineID）
 	TimeLineID	PrevTimeLineID; /* previous TLI, if this record begins a new
 								 * timeline (equals ThisTimeLineID otherwise) */
+	// 当前整页写入(啥意思?)
 	bool		fullPageWrites; /* current full_page_writes */
+
+	/* 下一个空闲交易ID */
 	FullTransactionId nextXid;	/* next free transaction ID */
+	/* 下一个空闲的 oid */
 	Oid			nextOid;		/* next free OID */
+	/* 下一个空闲的事务组 id? */
+	// 貌似是事务组合 id
 	MultiXactId nextMulti;		/* next free MultiXactId */
+	/* 下一个空闲的事务组偏移 */
 	MultiXactOffset nextMultiOffset;	/* next free MultiXact offset */
 	TransactionId oldestXid;	/* cluster-wide minimum datfrozenxid */
 	Oid			oldestXidDB;	/* database with minimum datfrozenxid */
+	/* 集群范围内的最小 datminmxid */
 	MultiXactId oldestMulti;	/* cluster-wide minimum datminmxid */
 	Oid			oldestMultiDB;	/* database with minimum datminmxid */
 	pg_time_t	time;			/* time stamp of checkpoint */
@@ -98,6 +115,8 @@ typedef enum DBState
 
 /*
  * Contents of pg_control.
+ *
+ * pg 控制文件内容
  */
 
 typedef struct ControlFileData
@@ -129,8 +148,10 @@ typedef struct ControlFileData
 	 */
 	DBState		state;			/* see enum above */
 	pg_time_t	time;			/* time stamp of last pg_control update */
+	/* 最后一个检查点记录地址 */
 	XLogRecPtr	checkPoint;		/* last check point record ptr */
 
+	/* 最后一个检查点记录的副本 */
 	CheckPoint	checkPointCopy; /* copy of last check point record */
 
 	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */

@@ -187,6 +187,9 @@ static int	LWLockTrancheNamesAllocated = 0;
  * This points to the main array of LWLocks in shared memory.  Backends inherit
  * the pointer by fork from the postmaster (except in the EXEC_BACKEND case,
  * where we have special measures to pass it down).
+ *
+ * 它指向共享内存中 LWLock 的主数组。
+ * 后端通过 fork 从 postmaster 继承指针（除了 EXEC_BACKEND 情况，我们有特殊的措施将其传递下来）。
  */
 LWLockPadded *MainLWLockArray = NULL;
 

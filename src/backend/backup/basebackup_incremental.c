@@ -43,11 +43,18 @@
 
 /*
  * Details extracted from the WAL ranges present in the supplied backup manifest.
+ *
+ * 从提供的备份清单中存在的 WAL 范围中提取的详细信息。
+ *
+ * 例如: { "Timeline": 1, "Start-LSN": "0/8000028", "End-LSN": "0/8000120" }
  */
 typedef struct
 {
+	// 时间线 id
 	TimeLineID	tli;
+	// 此时间线开始 lsn
 	XLogRecPtr	start_lsn;
+	// 此时间线结束 lsn
 	XLogRecPtr	end_lsn;
 } backup_wal_range;
 
@@ -84,7 +91,11 @@ struct IncrementalBackupInfo
 	StringInfoData buf;
 
 	/* WAL ranges extracted from the backup manifest. */
-	/* 从备份清单中提取的 WAL 范围。 */
+	/* 从备份清单中提取的 WAL 范围的列表。 */
+	// 例如:
+	// "WAL-Ranges": [
+	// { "Timeline": 1, "Start-LSN": "0/8000028", "End-LSN": "0/8000120" }
+	// ],
 	List	   *manifest_wal_ranges;
 
 	/*
@@ -251,6 +262,9 @@ AppendIncrementalManifestData(IncrementalBackupInfo *ib, const char *data,
 /*
  * Finalize an IncrementalBackupInfo object after all manifest data has
  * been supplied via calls to AppendIncrementalManifestData.
+ *
+ * 通过调用 AppendIncrementalManifestData 提供所有清单数据后，
+ * 最终确定 IncrementalBackupInfo 对象。
  */
 void
 FinalizeIncrementalManifest(IncrementalBackupInfo *ib)
@@ -290,7 +304,8 @@ FinalizeIncrementalManifest(IncrementalBackupInfo *ib)
  *
  * 准备进行增量备份
  *
- * 在调用此函数之前，应已调用 AppendIncrementalManifestData 和 FinalizeIncrementalManifest 以将所有清单数据传递给此对象
+ * 在调用此函数之前
+ * 应已调用 AppendIncrementalManifestData 和 FinalizeIncrementalManifest 以将所有清单数据传递给此对象
  *
  * 该函数对从清单中提取的数据执行健全性检查，并找出我们需要摘要的 WAL 范围，以及这些摘要是否可用
  * 然后，它读取并组合这些摘要文件中的数据
@@ -333,6 +348,11 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * 有效的备份清单必须始终包含至少一个 WAL 范围
 	 *（通常恰好是一个，除非备份跨越时间线切换）。
 	 */
+	// 例如:
+	// "WAL-Ranges": [
+	// { "Timeline": 1, "Start-LSN": "0/8000028", "End-LSN": "0/8000120" }
+	// ],
+	// num_wal_ranges = 1
 	num_wal_ranges = list_length(ib->manifest_wal_ranges);
 	if (num_wal_ranges == 0)
 		ereport(ERROR,
@@ -372,22 +392,26 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	tlep = palloc0(num_wal_ranges * sizeof(TimeLineHistoryEntry *));
 	for (i = 0; i < num_wal_ranges; ++i)
 	{
+		// range 是上一次备份清单记录的信息
 		backup_wal_range *range = list_nth(ib->manifest_wal_ranges, i);
 		bool		saw_earliest_wal_range_tli = false;
 		bool		saw_latest_wal_range_tli = false;
 
 		/* Search this server's history for this WAL range's TLI. */
+		/* 搜索此服务器的历史记录以查找此 WAL 范围的 TLI。 */
 		foreach(lc, expectedTLEs)
 		{
 			TimeLineHistoryEntry *tle = lfirst(lc);
 
 			if (tle->tli == range->tli)
 			{
+				// 找到一致时间线 id
 				tlep[i] = tle;
 				break;
 			}
 
 			if (tle->tli == earliest_wal_range_tli)
+				// 是最早的时间线
 				saw_earliest_wal_range_tli = true;
 			if (tle->tli == latest_wal_range_tli)
 				saw_latest_wal_range_tli = true;
@@ -398,7 +422,12 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * represents a previous state of this server. If the backup requires
 		 * WAL from a timeline that's not in our history, that definitely
 		 * isn't the case.
+		 *
+		 * 增量备份只能相对于代表该服务器先前状态的备份进行。
+		 * 如果备份需要来自不在我们历史记录中的时间线的 WAL，
+		 * 那么情况绝对不是这样。
 		 */
+		// 没有找到公共历史了，完蛋了只能增量了
 		if (tlep[i] == NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
@@ -430,6 +459,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	/*
 	 * Propagate information about the prior backup into the backup_label that
 	 * will be generated for this backup.
+	 *
+	 * 将有关先前备份的信息传播到为此备份生成的 backup_label 中。
 	 */
 	backup_state->istartpoint = earliest_wal_range_start_lsn;
 	backup_state->istarttli = earliest_wal_range_tli;
@@ -457,9 +488,24 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * comprehensive. It's pretty hard to see how we could be certain of
 	 * anything here. However, if there's a problem staring us right in the
 	 * face, it's best to report it, so we do.
+	 *
+	 * 健全性检查清单中 WAL 范围的开始和结束 LSN。
+	 *
+	 * 通常，在之前的备份期间根本不会有任何时间线切换，但如果有的话，它们应该发生在该服务器切换时间线的相同 LSN 上。
+	 *
+	 * 无论之前的备份期间是否存在任何时间线切换，之前的备份都不应要求该时间线开始之前的时间线中的任何 WAL。
+	 * 在此备份开始之后，它也不应该需要任何 WAL。
+	 *
+	 * 如果这些健全性检查中的任何一个失败，一种可能的解释是用户在同一时间线上使用相同的 LSN 多次生成 WAL。
+	 *
+	 * 例如，如果在时间线 1 上运行的两个备用数据库都被升级并且（由于归档设置损坏）都选择了新的时间线 ID 2，
+	 * 则这些检查之一可能会失败。
+	 * 请注意，用户有很多方法可以在不触发任何这些检查的情况下做一些非常糟糕的事情，并且它们并不旨在全面。
+	 * 很难看出我们如何能够确定这里的任何事情。 但是，如果问题摆在我们面前，最好报告，我们也会这样做。
 	 */
 	for (i = 0; i < num_wal_ranges; ++i)
 	{
+		// 取出第 i 个元素
 		backup_wal_range *range = list_nth(ib->manifest_wal_ranges, i);
 
 		if (range->tli == earliest_wal_range_tli)
@@ -525,7 +571,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * drifting to something that is not a multiple of ten.
 		 *
 		 * 调整等待时间以防止漂移
-		 * 这并不重要，但我们希望收到关于我们等待说 10 秒、20 秒、30 秒、40 秒......的时间的警告，而不会漂移到不是 10 的倍数的东西 。
+		 * 这并不重要，但我们希望收到关于我们等待说 10 秒、20 秒、30 秒、40 秒......的时间的警告，
+		 * 而不会漂移到不是 10 的倍数的东西 。
 		 */
 		timeout_in_ms -=
 			TimestampDifferenceMilliseconds(initial_time, current_time) %
@@ -549,8 +596,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * means that not only are no new files appearing on disk, but we're
 		 * not even incorporating new records into the in-memory state.
 		 *
-		 * 跟踪未发生挂起_lsn 进展的周期数
-		 * 如果pending_lsn没有前进，这意味着不仅没有新文件出现在磁盘上，而且我们甚至没有将新记录合并到内存状态中。
+		 * 跟踪未发生 pending_lsn 进展的周期数
+		 * 如果 pending_lsn 没有前进，这意味着不仅没有新文件出现在磁盘上，
+		 * 而且我们甚至没有将新记录合并到内存状态中。
 		 */
 		if (pending_lsn > prior_pending_lsn)
 		{
@@ -605,7 +653,12 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * per timeline in the loop that follows, but that would involve reading
 	 * the directory multiple times. It should be mildly faster - and perhaps
 	 * a bit safer - to do it just once.
+	 *
+	 * 检索与感兴趣的 LSN 范围重叠的任何时间线上的所有 WAL 摘要的列表。 
+	 * 我们可以在随后的循环中每个时间线调用一次 GetWalSummaries()，但这将涉及多次读取目录。 
+	 * 只执行一次应该会稍微快一点，也许更安全一些。
 	 */
+	// 获取 earliest_wal_range_start_lsn 到 backup_state->startpoint 范围的汇总 wal
 	all_wslist = GetWalSummaries(0, earliest_wal_range_start_lsn,
 								 backup_state->startpoint);
 
@@ -934,6 +987,10 @@ GetFileBackupMethod(IncrementalBackupInfo *ib, const char *path,
 	 * because an incremental file is always more than zero length, and it's
 	 * silly to take an incremental backup when a full backup would be
 	 * smaller.
+	 *
+	 * 如果没有条目，则由于采取了上一次备份以来，该关系没有对关系进行的更改，因此我们可以逐步备份它，不需要包含任何修改的块
+	 *
+	 * 但是，如果文件为零，我们应该做一个完整的备份，因为增量文件始终大于零长度，当完整备份较小时，进行增量备份是很愚蠢的
 	 */
 	if (brtentry == NULL)
 	{
@@ -1129,6 +1186,11 @@ manifest_process_system_identifier(JsonManifestParseContext *context,
  *
  * We store the path to each file and the size of each file for sanity-checking
  * purposes. For further details, see comments for IncrementalBackupInfo.
+ *
+ * 为备份清单中提到的每个文件调用此回调。
+ *
+ * 我们存储每个文件的路径和每个文件的大小以进行完整性检查
+ * 有关更多详细信息，请参阅 IncrementalBackupInfo 的注释。
  */
 static void
 manifest_process_file(JsonManifestParseContext *context,
@@ -1144,8 +1206,11 @@ manifest_process_file(JsonManifestParseContext *context,
 	entry = backup_file_insert(ib->manifest_files, pathname, &found);
 	if (!found)
 	{
+		// 从上下文分配内存，
+		// 同时设置 pathname
 		entry->path = MemoryContextStrdup(ib->manifest_files->ctx,
 										  pathname);
+		// 大小
 		entry->size = size;
 	}
 }

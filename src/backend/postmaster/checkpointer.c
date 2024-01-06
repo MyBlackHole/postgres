@@ -938,6 +938,8 @@ CheckpointerShmemInit(void)
  *		just signal checkpointer to do it, and return).
  *	CHECKPOINT_CAUSE_XLOG: checkpoint is requested due to xlog filling.
  *		(This affects logging, and in particular enables CheckPointWarning.)
+ *
+ * 在后端进程中调用以请求检查点
  */
 void
 RequestCheckpoint(int flags)
@@ -948,6 +950,8 @@ RequestCheckpoint(int flags)
 
 	/*
 	 * If in a standalone backend, just do it ourselves.
+	 *
+	 * 如果在独立后端，我们自己做即可。
 	 */
 	if (!IsPostmasterEnvironment)
 	{
@@ -955,6 +959,7 @@ RequestCheckpoint(int flags)
 		 * There's no point in doing slow checkpoints in a standalone backend,
 		 * because there's no other backends the checkpoint could disrupt.
 		 */
+		// 立即创建检查点
 		CreateCheckPoint(flags | CHECKPOINT_IMMEDIATE);
 
 		/* Free all smgr objects, as CheckpointerMain() normally would. */

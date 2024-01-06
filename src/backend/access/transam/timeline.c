@@ -71,6 +71,10 @@ restoreTimeLineHistoryFiles(TimeLineID begin, TimeLineID end)
  * its ancestor TLIs).  If we can't find the history file, assume that the
  * timeline has no parents, and return a list of just the specified timeline
  * ID.
+ *
+ * 尝试读取时间线的历史文件。
+ * 如果成功，则返回组件 TLI 的列表（给定 TLI 后跟其祖先 TLI）。
+ * 如果我们找不到历史文件，则假设时间线没有父级，并返回仅包含指定时间线 ID 的列表。
  */
 List *
 readTimeLineHistory(TimeLineID targetTLI)
@@ -120,6 +124,7 @@ readTimeLineHistory(TimeLineID targetTLI)
 
 	/*
 	 * Parse the file...
+	 * 解析文件
 	 */
 	prevend = InvalidXLogRecPtr;
 	for (;;)

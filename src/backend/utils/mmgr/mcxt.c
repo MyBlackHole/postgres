@@ -1687,6 +1687,8 @@ repalloc_huge(void *pointer, Size size)
 /*
  * MemoryContextStrdup
  *		Like strdup(), but allocate from the specified context
+ *
+ * 跟 strdup 一样
  */
 char *
 MemoryContextStrdup(MemoryContext context, const char *string)

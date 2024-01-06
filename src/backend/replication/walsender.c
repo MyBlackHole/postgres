@@ -2203,6 +2203,8 @@ exec_replication_command(const char *cmd_string)
 			break;
 
 		case T_UploadManifestCmd:
+			// 增量支持
+			// 用于上传上一次备份清单
 			cmdtag = "UPLOAD_MANIFEST";
 			// 修改进程名
 			set_ps_display(cmdtag);

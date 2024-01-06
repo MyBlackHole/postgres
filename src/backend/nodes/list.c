@@ -86,6 +86,12 @@ check_list_invariants(const List *list)
  * Since empty non-NIL lists are invalid, new_list() sets the initial length
  * to min_size, effectively marking that number of cells as valid; the caller
  * is responsible for filling in their data.
+ *
+ * 返回一个新分配的列表，其中至少有 min_size 个单元格的空间
+ *
+ * 由于空的非 NIL 列表是无效的，new_list() 将初始长度设置为 min_size，
+ * 有效地将该数量的单元格标记为有效；
+ * 调用者负责填写他们的数据
  */
 static List *
 new_list(NodeTag type, int min_size)
@@ -134,6 +140,7 @@ new_list(NodeTag type, int min_size)
 	max_size = min_size;
 #endif
 
+	// 预分配
 	newlist = (List *) palloc(offsetof(List, initial_elements) +
 							  max_size * sizeof(ListCell));
 	newlist->type = type;
@@ -323,6 +330,7 @@ static void
 new_tail_cell(List *list)
 {
 	/* Enlarge array if necessary */
+	// 扩大
 	if (list->length >= list->max_length)
 		enlarge_list(list, list->length + 1);
 	list->length++;
@@ -341,6 +349,7 @@ lappend(List *list, void *datum)
 	Assert(IsPointerList(list));
 
 	if (list == NIL)
+		// 创建 type:T_List 列表
 		list = new_list(T_List, 1);
 	else
 		new_tail_cell(list);

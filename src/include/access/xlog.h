@@ -141,6 +141,7 @@ extern PGDLLIMPORT bool XLOG_DEBUG;
 #define CHECKPOINT_IS_SHUTDOWN	0x0001	/* Checkpoint is for shutdown */
 #define CHECKPOINT_END_OF_RECOVERY	0x0002	/* Like shutdown checkpoint, but
 											 * issued at end of WAL recovery */
+/* 毫不拖延地去做 */
 #define CHECKPOINT_IMMEDIATE	0x0004	/* Do it without delays */
 #define CHECKPOINT_FORCE		0x0008	/* Force even if no activity */
 #define CHECKPOINT_FLUSH_ALL	0x0010	/* Flush all pages, including those
@@ -154,8 +155,11 @@ extern PGDLLIMPORT bool XLOG_DEBUG;
 
 /*
  * Flag bits for the record being inserted, set using XLogSetRecordFlags().
+ * 正在插入的记录的标志位，使用 XLogSetRecordFlags() 设置。
  */
+/* 包含复制源 */
 #define XLOG_INCLUDE_ORIGIN		0x01	/* include the replication origin */
+/* 记录对于持久性并不重要 */
 #define XLOG_MARK_UNIMPORTANT	0x02	/* record not important for durability */
 
 

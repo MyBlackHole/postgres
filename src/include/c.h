@@ -659,8 +659,10 @@ typedef uint32 SubTransactionId;
 #define TopSubTransactionId			((SubTransactionId) 1)
 
 /* MultiXactId must be equivalent to TransactionId, to fit in t_xmax */
+// 事务组合 id
 typedef TransactionId MultiXactId;
 
+// 事务组合记录偏移
 typedef uint32 MultiXactOffset;
 
 typedef uint32 CommandId;

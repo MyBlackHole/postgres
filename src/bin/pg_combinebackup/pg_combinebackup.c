@@ -271,6 +271,7 @@ main(int argc, char *argv[])
 	prior_backup_dirs = argv + optind;
 
 	/* Load backup manifests. */
+	/* 加载备份清单。 */
 	manifests = load_backup_manifests(n_backups, prior_backup_dirs);
 
 	/*

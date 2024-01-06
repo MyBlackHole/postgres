@@ -279,6 +279,7 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 
 	// 备份进度等待检查点
 	basebackup_progress_wait_checkpoint();
+
 	// 备份开始
 	do_pg_backup_start(opt->label, opt->fastcheckpoint, &state.tablespaces,
 					   backup_state, tablespace_map);

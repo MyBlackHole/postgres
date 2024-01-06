@@ -84,7 +84,10 @@ typedef struct
 	XLogRecPtr	summarized_lsn;
 	// 是否准确
 	bool		lsn_is_exact;
+	// Summaryr_pgprocno 是汇总器进程的 pgprocno 值（如果正在运行），否则为 INVALID_PGPROCNO。
 	ProcNumber	summarizer_pgprocno;
+	// 总结器使用pending_lsn来通告它最近读取的记录的结束LSN。 它不应该小于summary_lsn，但可能更大，
+	// 因为摘要器在写出新文件之前会在内存中缓冲一系列LSN 的数据。
 	XLogRecPtr	pending_lsn;
 
 	/*

@@ -43,6 +43,8 @@
 /*
  * A block reference table keeps track of the status of each relation
  * fork individually.
+ *
+ * 块引用表单独跟踪每个关系分支的状态。
  */
 typedef struct BlockRefTableKey
 {
@@ -335,6 +337,11 @@ BlockRefTableMarkBlockModified(BlockRefTable *brtab,
  *
  * If the entry does not exist, this function returns NULL. Otherwise, it
  * returns the entry and sets *limit_block to the value from the entry.
+ *
+ * 从块引用表中获取条目。
+ * 
+ * 如果该条目不存在，则该函数返回 NULL
+ * 否则，它返回该条目并将 *limit_block 设置为该条目中的值。
  */
 BlockRefTableEntry *
 BlockRefTableGetEntry(BlockRefTable *brtab, const RelFileLocator *rlocator,

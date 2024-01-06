@@ -39,6 +39,7 @@ typedef void (*json_manifest_error_callback) (JsonManifestParseContext *,
 
 struct JsonManifestParseContext
 {
+	// 私有数据
 	void	   *private_data;
 	json_manifest_version_callback version_cb;
 	json_manifest_system_identifier_callback system_identifier_cb;

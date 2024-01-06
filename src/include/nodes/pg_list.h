@@ -42,6 +42,7 @@
 #include "nodes/nodes.h"
 
 
+// 列表对象
 typedef union ListCell
 {
 	void	   *ptr_value;
@@ -50,13 +51,18 @@ typedef union ListCell
 	TransactionId xid_value;
 } ListCell;
 
+// 列表(数组)
 typedef struct List
 {
+	// 列表类型
 	NodeTag		type;			/* T_List, T_IntList, T_OidList, or T_XidList */
+	// 当前长度
 	int			length;			/* number of elements currently present */
+	// (已分配)最大长度
 	int			max_length;		/* allocated length of elements[] */
 	ListCell   *elements;		/* re-allocatable array of cells */
 	/* We may allocate some cells along with the List header: */
+	/* 我们可以将一些单元格与列表头一起分配：?*/
 	ListCell	initial_elements[FLEXIBLE_ARRAY_MEMBER];
 	/* If elements == initial_elements, it's not a separate allocation */
 } List;
@@ -169,6 +175,7 @@ list_length(const List *l)
  * linitial() than lfirst(): given a List, lsecond() returns the data
  * in the second list cell.
  */
+// 取出私有数据(用户数据)
 #define lfirst(lc)				((lc)->ptr_value)
 #define lfirst_int(lc)			((lc)->int_value)
 #define lfirst_oid(lc)			((lc)->oid_value)

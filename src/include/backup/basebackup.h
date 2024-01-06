@@ -24,13 +24,19 @@
  * Information about a tablespace
  *
  * In some usages, "path" can be NULL to denote the PGDATA directory itself.
+ *
+ * 有关表空间的信息
  */
 typedef struct
 {
+	// 表空间 oid
 	Oid			oid;			/* tablespace's OID */
+	// 全量路径
 	char	   *path;			/* full path to tablespace's directory */
+	// 相对路径
 	char	   *rpath;			/* relative path if it's within PGDATA, else
 								 * NULL */
+	/* 发送的总大小； -1 如果不知道 */
 	int64		size;			/* total size as sent; -1 if not known */
 } tablespaceinfo;
 

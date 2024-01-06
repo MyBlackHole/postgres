@@ -62,6 +62,10 @@ typedef struct bbsink_ops bbsink_ops;
  * 'startptr' and 'starttli' identify the point in the WAL stream at which
  * the backup began. They must be set before calling bbstate_begin_backup()
  * and must not be modified thereafter.
+ *
+ * 基础备份槽状态
+ *
+ * 备份的所有 bbsink 对象共享的总体备份状态。
  */
 typedef struct bbsink_state
 {
@@ -70,7 +74,9 @@ typedef struct bbsink_state
 	uint64		bytes_done;
 	uint64		bytes_total;
 	bool		bytes_total_is_valid;
+	// 当点检查点事务日志记录指针
 	XLogRecPtr	startptr;
+	// 当前时间线
 	TimeLineID	starttli;
 } bbsink_state;
 

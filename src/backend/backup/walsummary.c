@@ -38,6 +38,16 @@ static int	ListComparatorForWalSummaryFiles(const ListCell *a,
  * The intent is that you can call GetWalSummaries(tli, start_lsn, end_lsn)
  * to get all WAL summaries on the indicated timeline that overlap the
  * specified LSN range.
+ *
+ * 获取 WAL 摘要列表。
+ * 
+ * 如果 tli != 0，则仅包含具有指定 TLI 的 WAL 摘要。
+ * 
+ * 如果 start_lsn != InvalidXLogRecPtr，则仅包含在指示的 LSN 之后结束的摘要。
+ * 
+ * 如果 end_lsn != InvalidXLogRecPtr，则仅包含在指示的 LSN 之前开始的摘要。
+ * 
+ * 目的是您可以调用 GetWalSummaries(tli, start_lsn, end_lsn) 来获取指定时间线上与指定 LSN 范围重叠的所有 WAL 摘要。
  */
 List *
 GetWalSummaries(TimeLineID tli, XLogRecPtr start_lsn, XLogRecPtr end_lsn)
@@ -56,8 +66,10 @@ GetWalSummaries(TimeLineID tli, XLogRecPtr start_lsn, XLogRecPtr end_lsn)
 		XLogRecPtr	file_end_lsn;
 
 		/* Decode filename, or skip if it's not in the expected format. */
+		/* 解码文件名，如果不是预期格式则跳过。 */
 		if (!IsWalSummaryFilename(dent->d_name))
 			continue;
+		// 好家伙信息在文件名里
 		sscanf(dent->d_name, "%08X%08X%08X%08X%08X",
 			   &tmp[0], &tmp[1], &tmp[2], &tmp[3], &tmp[4]);
 		file_tli = tmp[0];
@@ -258,6 +270,10 @@ RemoveWalSummaryIfOlderThan(WalSummaryFile *ws, time_t cutoff_time)
 
 /*
  * Test whether a filename looks like a WAL summary file.
+ *
+ * 测试文件名是否看起来像 WAL 摘要文件。
+ * 例如:
+ * 000000010000000008000028000000000A000028.summary
  */
 static bool
 IsWalSummaryFilename(char *filename)

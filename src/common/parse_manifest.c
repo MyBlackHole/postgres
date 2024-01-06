@@ -63,6 +63,10 @@ typedef enum
 
 /*
  * Internal state used while decoding the JSON-format backup manifest.
+ *
+ * 解码 JSON 格式备份清单时使用的内部状态。
+ * 例如:
+ * { "Path": "global/pg_control", "Size": 8192, "Last-Modified": "2023-12-29 16:10:37 GMT", "Checksum-Algorithm": "CRC32C", "Checksum": "43872087" }
  */
 typedef struct
 {
@@ -70,15 +74,19 @@ typedef struct
 	JsonManifestSemanticState state;
 
 	/* These fields are used for parsing objects in the list of files. */
+	/* 这些字段用于解析文件列表中的对象。 */
 	JsonManifestFileField file_field;
+	// Path
 	char	   *pathname;
 	char	   *encoded_pathname;
 	char	   *size;
 	char	   *algorithm;
+	// 校验和算法
 	pg_checksum_type checksum_algorithm;
 	char	   *checksum;
 
 	/* These fields are used for parsing objects in the list of WAL ranges. */
+	/* 这些字段用于解析 WAL 范围列表中的对象。 */
 	JsonManifestWALRangeField wal_range_field;
 	char	   *timeline;
 	char	   *start_lsn;
@@ -242,6 +250,7 @@ json_parse_manifest(JsonManifestParseContext *context, char *buffer,
 	lex = makeJsonLexContextCstringLen(NULL, buffer, size, PG_UTF8, true);
 
 	/* Set up semantic actions. */
+	/* 设置语义动作 */
 	sem.semstate = &parse;
 	sem.object_start = json_manifest_object_start;
 	sem.object_end = json_manifest_object_end;
@@ -254,6 +263,7 @@ json_parse_manifest(JsonManifestParseContext *context, char *buffer,
 	sem.scalar = json_manifest_scalar;
 
 	/* Run the actual JSON parser. */
+	/* 运行实际的 JSON 解析器。 */
 	json_error = pg_parse_json(lex, &sem);
 	if (json_error != JSON_SUCCESS)
 		json_manifest_parse_failure(context, json_errdetail(json_error, lex));
@@ -546,6 +556,7 @@ json_manifest_scalar(void *state, char *token, JsonTokenType tokentype)
 					parse->size = token;
 					break;
 				case JMFF_LAST_MODIFIED:
+					// 未用上
 					pfree(token);	/* unused */
 					break;
 				case JMFF_CHECKSUM_ALGORITHM:
@@ -688,6 +699,7 @@ json_manifest_finalize_file(JsonManifestParseState *parse)
 	}
 
 	/* Parse size. */
+	// 解析大小
 	size = strtoul(parse->size, &ep, 10);
 	if (*ep)
 		json_manifest_parse_failure(parse->context,
@@ -721,6 +733,7 @@ json_manifest_finalize_file(JsonManifestParseState *parse)
 	}
 
 	/* Invoke the callback with the details we've gathered. */
+	/* 使用我们收集的详细信息调用回调。 */
 	context->per_file_cb(context, parse->pathname, size,
 						 checksum_type, checksum_length, checksum_payload);
 

@@ -100,6 +100,7 @@ static XLogRecData *mainrdata_last = (XLogRecData *) &mainrdata_head;
 static uint64 mainrdata_len;	/* total # of bytes in chain */
 
 /* flags for the in-progress insertion */
+/* 正在进行的插入的标志 */
 static uint8 curinsert_flags = 0;
 
 /*
@@ -514,6 +515,10 @@ XLogInsert(RmgrId rmid, uint8 info)
 		 * Get values needed to decide whether to do full-page writes. Since
 		 * we don't yet have an insertion lock, these could change under us,
 		 * but XLogInsertRecord will recheck them once it has a lock.
+		 *
+		 * 获取决定是否进行整页写入所需的值。 
+		 * 由于我们还没有插入锁，因此这些可能会在我们的控制下发生变化，
+		 * 但是 XLogInsertRecord 一旦获得锁就会重新检查它们。
 		 */
 		GetFullPageWriteInfo(&RedoRecPtr, &doPageWrites);
 

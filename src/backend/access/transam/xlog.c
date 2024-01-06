@@ -269,6 +269,17 @@ XLogRecPtr	XactLastCommitEnd = InvalidXLogRecPtr;
  * initialize it as a side effect of the first call to RecoveryInProgress(),
  * which meant that most code that might use it could assume that it had a
  * real if perhaps stale value. That's no longer the case.
+ *
+ *
+ * RedoRecPtr 是后端 REDO 记录指针的本地副本（与指向最新 CHECKPOINT 记录的指针几乎但不完全相同）。
+ * 只要我们可以安全地执行此操作（即，当我们持有插入锁时），我们就会从共享内存副本 XLogCtl->Insert.RedoRecPtr 更新此内容。
+ * 有关详细信息，请参阅 XLogInsertRecord。
+ * 如果我们持有 info_lck，我们也可以从 XLogCtl->RedoRecPtr 进行更新； 请参阅 GetRedoRecPtr。
+ *
+ * 注意：使用此变量的代码不仅必须准备好它可能任意过期的可能性，而且还要准备好它可能被设置为 InvalidXLogRecPtr 的可能性。
+ * 我们曾经将其初始化为第一次调用 RecoveryInProgress() 的副作用，
+ * 这意味着大多数可能使用它的代码可以假设它具有真实的（如果可能是过时的）值。 
+ * 现在情况已不再是这样了。
  */
 static XLogRecPtr RedoRecPtr;
 
@@ -282,6 +293,12 @@ static XLogRecPtr RedoRecPtr;
  * makes use of it must recheck the value after obtaining a WALInsertLock,
  * and respond appropriately if it turns out that the previous value wasn't
  * accurate.
+ *
+ * doPageWrites 是该后端 (fullPageWrites || runningBackups > 0) 的本地副本。
+ * 它与RedoRecPtr一起使用来决定是否需要拍摄页面的整页图像。
+ * 
+ * 注意：最初这是错误的，并且不能保证它在首次使用之前会被初始化为任何其他值。
+ * 任何使用它的代码都必须在获得 WALInsertLock 后重新检查该值，并在发现先前的值不准确时做出适当的响应。
  */
 static bool doPageWrites;
 
@@ -395,6 +412,7 @@ static SessionBackupState sessionBackupState = SESSION_BACKUP_NONE;
 
 /*
  * Shared state data for WAL insertion.
+ * WAL 插入的共享状态数据。
  */
 typedef struct XLogCtlInsert
 {
@@ -437,6 +455,9 @@ typedef struct XLogCtlInsert
 	 * runningBackups is a counter indicating the number of backups currently
 	 * in progress. lastBackupStart is the latest checkpoint redo location
 	 * used as a starting point for an online backup.
+	 *
+	 * runningBackups 是一个计数器，指示当前正在进行的备份数量
+	 * lastBackupStart 是用作在线备份起点的最新检查点重做位置
 	 */
 	int			runningBackups;
 	XLogRecPtr	lastBackupStart;
@@ -449,6 +470,8 @@ typedef struct XLogCtlInsert
 
 /*
  * Total shared-memory state for XLOG.
+ *
+ * XLOG 的总共享内存状态。
  */
 typedef struct XLogCtlData
 {
@@ -563,6 +586,7 @@ typedef enum
 	WALINSERT_SPECIAL_CHECKPOINT
 } WalInsertClass;
 
+// 事务控制数据
 static XLogCtlData *XLogCtl = NULL;
 
 /* a private copy of XLogCtl->Insert.WALInsertLocks, for convenience */
@@ -570,6 +594,7 @@ static WALInsertLockPadded *WALInsertLocks = NULL;
 
 /*
  * We maintain an image of pg_control in shared memory.
+ * 我们在共享内存中维护 pg_control 的映像。
  */
 static ControlFileData *ControlFile = NULL;
 
@@ -608,6 +633,7 @@ static int	UsableBytesInSegment;
 /*
  * Private, possibly out-of-date copy of shared LogwrtResult.
  * See discussion above.
+ * 共享 LogwrtResult 的私有副本，可能已经过时。 参见上面的讨论。
  */
 static XLogwrtResult LogwrtResult = {0, 0};
 
@@ -2536,6 +2562,7 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
 		curridx = NextBufIdx(curridx);
 
 		/* If flexible, break out of loop as soon as we wrote something */
+		/* 如果灵活的话，一旦我们写了一些东西就跳出循环 */
 		if (flexible && npages == 0)
 			break;
 	}
@@ -2544,6 +2571,7 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
 
 	/*
 	 * If asked to flush, do so
+	 * 如果要求冲洗，请冲洗
 	 */
 	if (LogwrtResult.Flush < WriteRqst.Flush &&
 		LogwrtResult.Flush < LogwrtResult.Write)
@@ -2573,6 +2601,7 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
 		}
 
 		/* signal that we need to wakeup walsenders later */
+		/* 表明我们稍后需要唤醒 walsenders */
 		WalSndWakeupRequest();
 
 		LogwrtResult.Flush = LogwrtResult.Write;
@@ -7985,6 +8014,12 @@ XLogPutNextOid(Oid nextOid)
  * The return value is either the end+1 address of the switch record,
  * or the end+1 address of the prior segment if we did not need to
  * write a switch record because we are already at segment start.
+ *
+ * 写入 XLOG 切换记录。
+ * 
+ * 这里我们只是盲目地发出XLogInsert请求来记录。 所有的魔力都发生在 XLogInsert 内部。
+ * 
+ * 返回值要么是 switch 记录的 end+1 地址，要么是前一个段的 end+1 地址（如果我们不需要写入 switch 记录，因为我们已经在段开始处）。
  */
 XLogRecPtr
 RequestXLogSwitch(bool mark_unimportant)
@@ -7995,6 +8030,7 @@ RequestXLogSwitch(bool mark_unimportant)
 	XLogBeginInsert();
 
 	if (mark_unimportant)
+		// 标记不重要
 		XLogSetRecordFlags(XLOG_MARK_UNIMPORTANT);
 	RecPtr = XLogInsert(RM_XLOG_ID, XLOG_SWITCH);
 
@@ -8768,6 +8804,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 	 * XLogInsertRecord().
 	 */
 	WALInsertLockAcquireExclusive();
+	// 备份计数
 	XLogCtl->Insert.runningBackups++;
 	WALInsertLockRelease();
 
@@ -8775,6 +8812,9 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 	 * Ensure we decrement runningBackups if we fail below. NB -- for this to
 	 * work correctly, it is critical that sessionBackupState is only updated
 	 * after this block is over.
+	 *
+	 * 如果我们在下面失败，请确保我们减少 runningBackups
+	 * 注意——为了使其正常工作，至关重要的是 sessionBackupState 仅在该块结束后更新
 	 */
 	PG_ENSURE_ERROR_CLEANUP(do_pg_abort_backup, DatumGetBool(true));
 	{
@@ -8805,6 +8845,8 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 		 * the backup taken during recovery is not available for the special
 		 * recovery case described above.
 		 */
+		// NOTE:
+		// 存在恢复过程中备份问题，非本次重点
 		if (!backup_started_in_recovery)
 			RequestXLogSwitch(false);
 
@@ -8829,6 +8871,8 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 			 *
 			 * We use CHECKPOINT_IMMEDIATE only if requested by user (via
 			 * passing fast = true).  Otherwise this can take awhile.
+			 *
+			 * 立即发起创建检查点
 			 */
 			RequestCheckpoint(CHECKPOINT_FORCE | CHECKPOINT_WAIT |
 							  (fast ? CHECKPOINT_IMMEDIATE : 0));
@@ -8840,6 +8884,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 			 * pointer.
 			 */
 			LWLockAcquire(ControlFileLock, LW_SHARED);
+			// 获取设置备份状态对象设置
 			state->checkpointloc = ControlFile->checkPoint;
 			state->startpoint = ControlFile->checkPointCopy.redo;
 			state->starttli = ControlFile->checkPointCopy.ThisTimeLineID;
