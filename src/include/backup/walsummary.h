@@ -18,16 +18,22 @@
 #include "nodes/pg_list.h"
 #include "storage/fd.h"
 
+// 汇总 wal 文件 io 描述
 typedef struct WalSummaryIO
 {
+	// 文件 fd
 	File		file;
+	// fd 偏移
 	off_t		filepos;
 } WalSummaryIO;
 
 typedef struct WalSummaryFile
 {
+	// 开始 lsn
 	XLogRecPtr	start_lsn;
+	// 结束 lsn
 	XLogRecPtr	end_lsn;
+	// 时间线
 	TimeLineID	tli;
 } WalSummaryFile;
 

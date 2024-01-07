@@ -60,6 +60,10 @@ typedef struct BlockRefTableKey
  * we divide the relation into chunks of 2^16 blocks and choose between
  * an array representation and a bitmap representation for each chunk.
  *
+ * 我们可能需要为仅一小部分块被修改的关系或几乎每个块都被修改的关系存储数据，
+ * 并且我们希望在这两种情况下都有一个节省空间的表示。
+ * 为了实现这一点，我们将关系划分为 2^16 个块，并为每个块选择数组表示形式和位图表示形式。
+ *
  * When the number of modified blocks in a given chunk is small, we
  * essentially store an array of block numbers, but we need not store the
  * entire block number: instead, we store each block number as a 2-byte
@@ -77,9 +81,13 @@ typedef struct BlockRefTableKey
  * Any chunk whose allocated size reaches MAX_ENTRIES_PER_CHUNK is converted
  * to a bitmap, and thus never needs to grow further.
  */
+// 每大块的块数
 #define BLOCKS_PER_CHUNK		(1 << 16)
+// 每个条目的块数
 #define BLOCKS_PER_ENTRY		(BITS_PER_BYTE * sizeof(uint16))
+// 每个大块最大条目数
 #define MAX_ENTRIES_PER_CHUNK	(BLOCKS_PER_CHUNK / BLOCKS_PER_ENTRY)
+// 每个块的初始条目
 #define INITIAL_ENTRIES_PER_CHUNK	16
 typedef uint16 *BlockRefTableChunk;
 
@@ -153,11 +161,13 @@ struct BlockRefTable
 
 /*
  * On-disk serialization format for block reference table entries.
+ * 块引用表条目的磁盘序列化格式。
  */
 typedef struct BlockRefTableSerializedEntry
 {
 	RelFileLocator rlocator;
 	ForkNumber	forknum;
+	// 限制块
 	BlockNumber limit_block;
 	uint32		nchunks;
 } BlockRefTableSerializedEntry;
@@ -172,10 +182,13 @@ typedef struct BlockRefTableSerializedEntry
  */
 typedef struct BlockRefTableBuffer
 {
+	// 数据读取回调
 	io_callback_fn io_callback;
 	void	   *io_callback_arg;
 	char		data[BUFSIZE];
+	// 读取位置
 	int			used;
+	// 数据移动到 buf 位置
 	int			cursor;
 	pg_crc32c	crc;
 } BlockRefTableBuffer;
@@ -205,10 +218,13 @@ struct BlockRefTableReader
 	char	   *error_filename;
 	report_error_fn error_callback;
 	void	   *error_callback_arg;
+	// 总块数
 	uint32		total_chunks;
 	uint32		consumed_chunks;
 	uint16	   *chunk_size;
+	// 块存储缓冲区
 	uint16		chunk_data[MAX_ENTRIES_PER_CHUNK];
+	// 块偏移量
 	uint32		chunk_position;
 };
 
@@ -232,6 +248,7 @@ static void BlockRefTableFileTerminate(BlockRefTableBuffer *buffer);
 
 /*
  * Create an empty block reference table.
+ * 创建一个空的块引用表。
  */
 BlockRefTable *
 CreateEmptyBlockRefTable(void)
@@ -259,6 +276,10 @@ CreateEmptyBlockRefTable(void)
  *
  * The "limit block" is the shortest known length of the relation within the
  * range of WAL records covered by this block reference table.
+ *
+ * 为关系分支设置“限制块”，并忘记任何具有相同或更高块编号的修改块。
+ *
+ * “限制块”是该块引用表覆盖的 WAL 记录范围内关系的最短已知长度。
  */
 void
 BlockRefTableSetLimitBlock(BlockRefTable *brtab,
@@ -280,6 +301,10 @@ BlockRefTableSetLimitBlock(BlockRefTable *brtab,
 		 * We have no existing data about this relation fork, so just record
 		 * the limit_block value supplied by the caller, and make sure other
 		 * parts of the entry are properly initialized.
+		 *
+		 * 我们没有关于此关系分支的现有数据，
+		 * 因此只需记录调用者提供的 limit_block 值，
+		 * 并确保条目的其他部分已正确初始化。
 		 */
 		brtentry->limit_block = limit_block;
 		brtentry->nchunks = 0;
@@ -289,6 +314,7 @@ BlockRefTableSetLimitBlock(BlockRefTable *brtab,
 		return;
 	}
 
+	// 块参考表条目设置限制块
 	BlockRefTableEntrySetLimitBlock(brtentry, limit_block);
 }
 
@@ -600,6 +626,7 @@ CreateBlockRefTableReader(io_callback_fn read_callback,
 	INIT_CRC32C(reader->buffer.crc);
 
 	/* Verify magic number. */
+	/* 验证幻数。 */
 	BlockRefTableRead(reader, &magic, sizeof(uint32));
 	if (magic != BLOCKREFTABLE_MAGIC)
 		error_callback(error_callback_arg,
@@ -615,6 +642,9 @@ CreateBlockRefTableReader(io_callback_fn read_callback,
  *
  * After calling this function, you must call BlockRefTableReaderGetBlocks
  * until it returns 0 before calling it again.
+ * 读取该块引用表文件覆盖的下一个关系分支。
+ *
+ * 调用该函数后，必须调用BlockRefTableReaderGetBlocks，直到返回0后才能再次调用。
  */
 bool
 BlockRefTableReaderNextRelation(BlockRefTableReader *reader,
@@ -632,12 +662,17 @@ BlockRefTableReaderNextRelation(BlockRefTableReader *reader,
 	Assert(reader->total_chunks == reader->consumed_chunks);
 
 	/* Read serialized entry. */
+	/* 读取序列化条目。 */
 	BlockRefTableRead(reader, &sentry,
 					  sizeof(BlockRefTableSerializedEntry));
 
 	/*
 	 * If we just read the sentinel entry indicating that we've reached the
 	 * end, read and check the CRC.
+	 *
+	 * 如果我们只是读取哨兵条目表明我们已到达末尾，请读取并检查 CRC。
+	 *
+	 * 空代表到尾部了
 	 */
 	if (memcmp(&sentry, &zentry, sizeof(BlockRefTableSerializedEntry)) == 0)
 	{
@@ -653,9 +688,11 @@ BlockRefTableReaderNextRelation(BlockRefTableReader *reader,
 		FIN_CRC32C(expected_crc);
 
 		/* Now we can read the actual value. */
+		/* 现在我们可以读取实际值了。 */
 		BlockRefTableRead(reader, &actual_crc, sizeof(pg_crc32c));
 
 		/* Throw an error if there is a mismatch. */
+		/* 如果不匹配则抛出错误。 */
 		if (!EQ_CRC32C(expected_crc, actual_crc))
 			reader->error_callback(reader->error_callback_arg,
 								   "file \"%s\" has wrong checksum: expected %08X, found %08X",
@@ -665,17 +702,22 @@ BlockRefTableReaderNextRelation(BlockRefTableReader *reader,
 	}
 
 	/* Read chunk size array. */
+	/* 读取块大小数组。 */
 	if (reader->chunk_size != NULL)
 		pfree(reader->chunk_size);
 	reader->chunk_size = palloc(sentry.nchunks * sizeof(uint16));
+	// 读取块大小数组
 	BlockRefTableRead(reader, reader->chunk_size,
 					  sentry.nchunks * sizeof(uint16));
 
 	/* Set up for chunk scan. */
+	/* 设置块扫描。 */
 	reader->total_chunks = sentry.nchunks;
+	// 设置块扫描初始位置
 	reader->consumed_chunks = 0;
 
 	/* Return data to caller. */
+	/* 将数据返回给调用者。 */
 	memcpy(rlocator, &sentry.rlocator, sizeof(RelFileLocator));
 	*forknum = sentry.forknum;
 	*limit_block = sentry.limit_block;
@@ -691,18 +733,26 @@ BlockRefTableReaderNextRelation(BlockRefTableReader *reader,
  * entries actually written into the 'blocks' array, which may be less than
  * 'nblocks' if we run out of modified blocks in the relation fork before
  * we run out of room in the array.
+ *
+ * 获取与最近一次调用 BlockRefTableReaderNextRelation 返回的关系分支关联的修改块。
+ *
+ * 返回时，块号将被写入“blocks”数组，其长度应通过“nblocks”传递。 
+ * 返回值是实际写入“blocks”数组的条目数，如果在数组中的空间耗尽之前用完关系分支中的修改块，则该值可能小于“nblocks”。
  */
 unsigned
 BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 							 BlockNumber *blocks,
 							 int nblocks)
 {
+	// 找到块计数器
 	unsigned	blocks_found = 0;
 
 	/* Must provide space for at least one block number to be returned. */
+	/* 必须为至少一个要返回的块号提供空间。 */
 	Assert(nblocks > 0);
 
 	/* Loop collecting blocks to return to caller. */
+	/* 循环收集块以返回给调用者。 */
 	for (;;)
 	{
 		uint16		next_chunk_size;
@@ -710,6 +760,8 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 		/*
 		 * If we've read at least one chunk, maybe it contains some block
 		 * numbers that could satisfy caller's request.
+		 *
+		 * 如果我们至少读取了一个块，那么它可能包含一些可以满足调用者请求的块号。
 		 */
 		if (reader->consumed_chunks > 0)
 		{
@@ -719,6 +771,7 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 			if (chunk_size == MAX_ENTRIES_PER_CHUNK)
 			{
 				/* Bitmap format, so search for bits that are set. */
+				/* 位图格式，因此搜索已设置的位。 */
 				while (reader->chunk_position < BLOCKS_PER_CHUNK &&
 					   blocks_found < nblocks)
 				{
@@ -735,6 +788,7 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 			else
 			{
 				/* Not in bitmap format, so each entry is a 2-byte offset. */
+				/* 不是位图格式，因此每个条目都是 2 字节偏移量。 */
 				while (reader->chunk_position < chunk_size &&
 					   blocks_found < nblocks)
 				{
@@ -746,12 +800,16 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 		}
 
 		/* We found enough blocks, so we're done. */
+		/* 我们找到了足够的块，所以我们完成了。 */
 		if (blocks_found >= nblocks)
 			break;
 
 		/*
 		 * We didn't find enough blocks, so we must need the next chunk. If
 		 * there are none left, though, then we're done anyway.
+		 *
+		 * 我们没有找到足够的块，所以我们必须需要下一个块。
+		 * 不过，如果没有剩下的，那么我们就完成了。
 		 */
 		if (reader->consumed_chunks == reader->total_chunks)
 			break;
@@ -761,6 +819,10 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 		 * chunk. Note that the next chunk might be empty, in which case we
 		 * consume the chunk without actually consuming any bytes from the
 		 * underlying file.
+		 *
+		 * 读取下一个块的数据并将扫描位置重置为块的开头。
+		 * 请注意，下一个块可能是空的，在这种情况下，
+		 * 我们消耗该块而不实际消耗底层文件中的任何字节。
 		 */
 		next_chunk_size = reader->chunk_size[reader->consumed_chunks];
 		if (next_chunk_size > 0)
@@ -1198,6 +1260,8 @@ BlockRefTableFlush(BlockRefTableBuffer *buffer)
  * Read data from a BlockRefTableBuffer, and update the running CRC
  * calculation for the returned data (but not any data that we may have
  * buffered but not yet actually returned).
+ *
+ * 从 BlockRefTableBuffer 读取数据，并更新返回数据的运行 CRC 计算（但不是我们可能已缓冲但尚未实际返回的任何数据）。
  */
 static void
 BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
@@ -1205,6 +1269,7 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 	BlockRefTableBuffer *buffer = &reader->buffer;
 
 	/* Loop until read is fully satisfied. */
+	/* 循环直到读取完全满足。 */
 	while (length > 0)
 	{
 		if (buffer->cursor < buffer->used)
@@ -1212,6 +1277,8 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 			/*
 			 * If any buffered data is available, use that to satisfy as much
 			 * of the request as possible.
+			 *
+			 * 如果有任何缓冲数据可用，请使用它来满足尽可能多的请求。
 			 */
 			int			bytes_to_copy = Min(length, buffer->used - buffer->cursor);
 
@@ -1227,9 +1294,12 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 			/*
 			 * If the request length is long, read directly into caller's
 			 * buffer.
+			 *
+			 * 如果请求长度很长，则直接读入调用者的缓冲区。
 			 */
 			int			bytes_read;
 
+			// io_callback: ReadWalSummary
 			bytes_read = buffer->io_callback(buffer->io_callback_arg,
 											 data, length);
 			COMP_CRC32C(buffer->crc, data, bytes_read);
@@ -1237,6 +1307,7 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 			length -= bytes_read;
 
 			/* If we didn't get anything, that's bad. */
+			/* 如果我们没有得到任何东西，那就糟糕了。 */
 			if (bytes_read == 0)
 				reader->error_callback(reader->error_callback_arg,
 									   "file \"%s\" ends unexpectedly",
@@ -1246,12 +1317,16 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 		{
 			/*
 			 * Refill our buffer.
+			 *
+			 * 重新填充我们的缓冲区。
 			 */
+			// io_callback: ReadWalSummary
 			buffer->used = buffer->io_callback(buffer->io_callback_arg,
 											   buffer->data, BUFSIZE);
 			buffer->cursor = 0;
 
 			/* If we didn't get anything, that's bad. */
+			/* 如果我们没有得到任何东西，那就糟糕了。 */
 			if (buffer->used == 0)
 				reader->error_callback(reader->error_callback_arg,
 									   "file \"%s\" ends unexpectedly",

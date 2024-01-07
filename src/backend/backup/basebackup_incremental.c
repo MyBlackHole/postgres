@@ -31,6 +31,7 @@
 #include "postmaster/walsummarizer.h"
 #include "utils/timestamp.h"
 
+// 每次读取的块数
 #define	BLOCKS_PER_READ			512
 
 /*
@@ -317,7 +318,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 							BackupState *backup_state)
 {
 	MemoryContext oldcontext;
+	// 预期时间线
 	List	   *expectedTLEs;
+	// required_wslist 必须的汇总 wal
 	List	   *all_wslist,
 			   *required_wslist = NIL;
 	ListCell   *lc;
@@ -325,7 +328,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	int			num_wal_ranges;
 	int			i;
 	bool		found_backup_start_tli = false;
+	// 备份清单最早时间线
 	TimeLineID	earliest_wal_range_tli = 0;
+	// 备份清单最早时间线开始 lsn
 	XLogRecPtr	earliest_wal_range_start_lsn = InvalidXLogRecPtr;
 	TimeLineID	latest_wal_range_tli = 0;
 	XLogRecPtr	summarized_lsn;
@@ -411,7 +416,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 			}
 
 			if (tle->tli == earliest_wal_range_tli)
-				// 是最早的时间线
+				// 标记存在
+				// 重合时间线
 				saw_earliest_wal_range_tli = true;
 			if (tle->tli == latest_wal_range_tli)
 				saw_latest_wal_range_tli = true;
@@ -461,6 +467,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * will be generated for this backup.
 	 *
 	 * 将有关先前备份的信息传播到为此备份生成的 backup_label 中。
+	 *
+	 * 看上面循环最终会是最后重合的时间线
 	 */
 	backup_state->istartpoint = earliest_wal_range_start_lsn;
 	backup_state->istarttli = earliest_wal_range_tli;
@@ -666,10 +674,18 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 * We need WAL summaries for everything that happened during the prior
 	 * backup and everything that happened afterward up until the point where
 	 * the current backup started.
+	 *
+	 * 我们需要对先前备份期间发生的所有事情以及之后直到当前备份开始时发生的所有事情进行 WAL 摘要。
+	 *
+	 * 从时间线找汇总 wal
 	 */
 	foreach(lc, expectedTLEs)
 	{
 		TimeLineHistoryEntry *tle = lfirst(lc);
+		// 期望获取
+		// 备份清单与备份开始时间线重合的时间线
+		// 开始 lsn,结束 lsn
+		// 最终目的就是获取他们三，为什么循环获取
 		XLogRecPtr	tli_start_lsn = tle->begin;
 		XLogRecPtr	tli_end_lsn = tle->end;
 		XLogRecPtr	tli_missing_lsn = InvalidXLogRecPtr;
@@ -681,13 +697,18 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * where this backup started. Most of the time, this means we won't
 		 * skip anything at all, as it's unlikely that the timeline has
 		 * changed since the beginning of the backup moments ago.
+		 *
+		 * 从当前时间线向后浏览该服务器的历史记录，我们跳过所有内容，直到找到此备份开始的时间线
+		 * 大多数时候，这意味着我们根本不会跳过任何内容，因为自备份开始以来时间线不太可能发生变化。
 		 */
 		if (tle->tli == backup_state->starttli)
 		{
+			// 找到了备份启动时时间线
 			found_backup_start_tli = true;
 			tli_end_lsn = backup_state->startpoint;
 		}
 		else if (!found_backup_start_tli)
+			// 跳过不是备份启动时间线
 			continue;
 
 		/*
@@ -698,8 +719,15 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * this is the latest TLI involved, the range of interest ends at the
 		 * start LSN of the current backup; otherwise, it ends at the point
 		 * where we switched from this timeline to the next one.
+		 *
+		 * 查找与此时间线感兴趣的 LSN 范围重叠的摘要。
+		 * 如果这是涉及的最早时间线，则感兴趣的范围从先前备份的起始LSN开始； 
+		 * 否则，它从该时间线出现的 LSN 开始。
+		 * 如果这是涉及的最新 TLI，则感兴趣的范围在当前备份的起始 LSN 处结束； 
+		 * 否则，它会在我们从这个时间线切换到下一个时间线的点结束。
 		 */
 		if (tle->tli == earliest_wal_range_tli)
+			// 改成清单最接近时间线的开始 lsn
 			tli_start_lsn = earliest_wal_range_start_lsn;
 		tli_wslist = FilterWalSummaries(all_wslist, tle->tli,
 										tli_start_lsn, tli_end_lsn);
@@ -709,6 +737,12 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * entire range of LSNs for which summaries are required, or indeed
 		 * that we found any WAL summaries at all. Check whether we have a
 		 * problem of that sort.
+		 *
+		 * 无法保证我们找到的 WAL 摘要涵盖了需要摘要的 LSN 的整个范围，
+		 * 或者实际上我们根本没有找到任何 WAL 摘要。
+		 * 检查一下我们是否有这样的问题。
+		 *
+		 * 保底检查
 		 */
 		if (!WalSummariesAreComplete(tli_wslist, tli_start_lsn, tli_end_lsn,
 									 &tli_missing_lsn))
@@ -744,12 +778,23 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * generate summaries that do not overlap. If somehow they exist,
 		 * we'll do a bit of extra work but the results should still be
 		 * correct.
+		 *
+		 * 请记住，我们需要阅读这些摘要。
+		 *
+		 * 从技术上讲，这可能会读取比所需更多的文件，因为 tli_wslist 理论上可能包含冗余摘要。
+		 * 例如，如果我们有一个从 0/10000000 到 0/20000000 的摘要，还有一个从 0/00000000 到 0/30000000 的摘要，那么后者包含前者，而前者可以被忽略。
+		 * 真的有这情况?
+		 *
+		 * 我们忽略这种可能性，因为 WAL 摘要器仅尝试生成不重叠的摘要。
+		 * 如果它们以某种方式存在，我们将做一些额外的工作，但结果应该仍然是正确的。
+		 *
 		 */
 		required_wslist = list_concat(required_wslist, tli_wslist);
 
 		/*
 		 * Timelines earlier than the one in which the prior backup began are
 		 * not relevant.
+		 * 早于上一备份开始时间的时间线不相关。
 		 */
 		if (tle->tli == earliest_wal_range_tli)
 			break;
@@ -771,19 +816,23 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		WalSummaryFile *ws = lfirst(lc);
 		WalSummaryIO wsio;
 		BlockRefTableReader *reader;
+		// 定位器
 		RelFileLocator rlocator;
 		ForkNumber	forknum;
 		BlockNumber limit_block;
 		BlockNumber blocks[BLOCKS_PER_READ];
 
+		// 打开
 		wsio.file = OpenWalSummaryFile(ws, false);
 		wsio.filepos = 0;
 		ereport(DEBUG1,
 				(errmsg_internal("reading WAL summary file \"%s\"",
 								 FilePathName(wsio.file))));
+		// 创建读取器
 		reader = CreateBlockRefTableReader(ReadWalSummary, &wsio,
 										   FilePathName(wsio.file),
 										   ReportWalSummaryError, NULL);
+		// 读取设置 rlocator\forknum\limit_block
 		while (BlockRefTableReaderNextRelation(reader, &rlocator, &forknum,
 											   &limit_block))
 		{
@@ -805,7 +854,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 												   forknum, blocks[i]);
 			}
 		}
+		// 释放销毁读取器
 		DestroyBlockRefTableReader(reader);
+		// 关闭打开文件
 		FileClose(wsio.file);
 	}
 

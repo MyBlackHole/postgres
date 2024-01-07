@@ -121,6 +121,9 @@
 /*
  * You can try changing this if you have a machine with bytes of
  * another size, but no guarantee...
+ *
+ * 如果您有一台具有其他大小字节的机器，
+ * 您可以尝试更改此设置，但不能保证......
  */
 #define BITS_PER_BYTE		8
 

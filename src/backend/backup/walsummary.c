@@ -107,6 +107,14 @@ GetWalSummaries(TimeLineID tli, XLogRecPtr start_lsn, XLogRecPtr end_lsn)
  *
  * If end_lsn != InvalidXLogRecPtr, only summaries that start before the
  * indicated LSN will be included.
+ *
+ * 基于现有列表构建新的 WAL 摘要列表，但过滤掉与搜索参数不匹配的摘要。
+ * 
+ * 如果 tli != 0，则仅包含具有指定 TLI 的 WAL 摘要。
+ * 
+ * 如果 start_lsn != InvalidXLogRecPtr，则仅包含在指示的 LSN 之后结束的摘要。
+ * 
+ * 如果 end_lsn != InvalidXLogRecPtr，则仅包含在指示的 LSN 之前开始的摘要。
  */
 List *
 FilterWalSummaries(List *wslist, TimeLineID tli,
@@ -145,6 +153,12 @@ FilterWalSummaries(List *wslist, TimeLineID tli,
  * If false is returned, *missing_lsn is set either to InvalidXLogRecPtr
  * if there are no WAL summary files in the input list, or to the first LSN
  * in the range that is not covered by a WAL summary file in the input list.
+ *
+ * 检查提供的 WalSummaryFile 对象列表是否涵盖从 start_lsn 到 end_lsn 的整个 LSN 范围
+ * 此函数忽略时间线，因此调用者应该在调用此函数之前使用适当的时间线进行过滤
+ * 如果覆盖了整个 LSN 范围，则返回 true，否则返回 false
+ * 如果返回 false，则 *missing_lsn 设置为 InvalidXLogRecPtr（如果输入列表中没有 WAL 摘要文件），
+ * 或者设置为输入列表中 WAL 摘要文件未覆盖的范围内的第一个 LSN。
  */
 bool
 WalSummariesAreComplete(List *wslist, XLogRecPtr start_lsn,
@@ -154,6 +168,7 @@ WalSummariesAreComplete(List *wslist, XLogRecPtr start_lsn,
 	ListCell   *lc;
 
 	/* Special case for empty list. */
+	/* 空列表的特殊情况。 */
 	if (wslist == NIL)
 	{
 		*missing_lsn = InvalidXLogRecPtr;
@@ -161,6 +176,7 @@ WalSummariesAreComplete(List *wslist, XLogRecPtr start_lsn,
 	}
 
 	/* Make a private copy of the list and sort it by start LSN. */
+	/* 制作列表的私有副本并按起始 LSN 对其进行排序。 */
 	wslist = list_copy(wslist);
 	list_sort(wslist, ListComparatorForWalSummaryFiles);
 
@@ -193,6 +209,7 @@ WalSummariesAreComplete(List *wslist, XLogRecPtr start_lsn,
 			 * end LSN, we have proved completeness.
 			 */
 			if (current_lsn >= end_lsn)
+				// 没问题
 				return true;
 		}
 	}
@@ -212,6 +229,11 @@ WalSummariesAreComplete(List *wslist, XLogRecPtr start_lsn,
  * This will throw an error in case of trouble. As an exception, if
  * missing_ok = true and the trouble is specifically that the file does
  * not exist, it will not throw an error and will return a value less than 0.
+ *
+ * 打开 WAL 摘要文件。
+ * 
+ * 如果出现问题，这将引发错误。 
+ * 作为例外，如果 Missing_ok = true 并且问题具体在于该文件不存在，则它不会抛出错误并返回一个小于 0 的值。
  */
 File
 OpenWalSummaryFile(WalSummaryFile *ws, bool missing_ok)
@@ -219,6 +241,7 @@ OpenWalSummaryFile(WalSummaryFile *ws, bool missing_ok)
 	char		path[MAXPGPATH];
 	File		file;
 
+	// 例子: 00000001000000000C000028000000000D000060.summary
 	snprintf(path, MAXPGPATH,
 			 XLOGDIR "/summaries/%08X%08X%08X%08X%08X.summary",
 			 ws->tli,
@@ -284,6 +307,8 @@ IsWalSummaryFilename(char *filename)
 
 /*
  * Data read callback for use with CreateBlockRefTableReader.
+ *
+ * 与 CreateBlockRefTableReader 一起使用的数据读取回调。
  */
 int
 ReadWalSummary(void *wal_summary_io, void *data, int length)
