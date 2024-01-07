@@ -29,6 +29,10 @@
  * If you add a new entry, remember to update the errhint in
  * forkname_to_number() below, and update the SGML documentation for
  * pg_relation_size().
+ *
+ * 按叉号查找叉名称的表。
+ * 
+ * 如果添加新条目，请记住更新下面的 forkname_to_number() 中的错误，并更新 pg_relation_size() 的 SGML 文档。
  */
 const char *const forkNames[] = {
 	[MAIN_FORKNUM] = "main",

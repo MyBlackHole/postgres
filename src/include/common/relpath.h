@@ -56,9 +56,10 @@ typedef enum ForkNumber
 	InvalidForkNumber = -1,
 	// 主叉数量
 	MAIN_FORKNUM = 0,
-	// FSM (有限状态机?)
+	// FSM (空闲空间映射表)
 	// 叉数量
 	FSM_FORKNUM,
+	// VM (可见性映射表)
 	// 可见的叉数量
 	VISIBILITYMAP_FORKNUM,
 	// 初始化分叉号

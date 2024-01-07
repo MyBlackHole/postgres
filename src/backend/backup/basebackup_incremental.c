@@ -841,15 +841,20 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 
 			while (1)
 			{
+				// 块计数器
 				unsigned	nblocks;
 				unsigned	i;
 
+				// 从读者读取块
+				// 设置 blocks
 				nblocks = BlockRefTableReaderGetBlocks(reader, blocks,
 													   BLOCKS_PER_READ);
 				if (nblocks == 0)
 					break;
 
 				for (i = 0; i < nblocks; ++i)
+					// 从 blocks 记录列表，设置块修改状态到
+					// ib.brtab hash brtentry
 					BlockRefTableMarkBlockModified(ib->brtab, &rlocator,
 												   forknum, blocks[i]);
 			}
@@ -1168,6 +1173,7 @@ GetIncrementalHeaderSize(unsigned num_blocks_required)
 
 /*
  * Compute the size for an incremental file containing a given number of blocks.
+ * 计算包含给定块数的增量文件的大小。
  */
 extern size_t
 GetIncrementalFileSize(unsigned num_blocks_required)
@@ -1175,12 +1181,16 @@ GetIncrementalFileSize(unsigned num_blocks_required)
 	size_t		result;
 
 	/* Make sure we're not going to overflow. */
+	/* 确保我们不会溢出。 */
 	Assert(num_blocks_required <= RELSEG_SIZE);
 
 	/*
 	 * Header with three four byte quantities (magic number, truncation block
 	 * length, block count) followed by block numbers, rounded to a multiple
 	 * of BLCKSZ (for files with block data), followed by block contents.
+	 *
+	 * 三个四字节数量（幻数、截断块长度、块计数），
+	 * 后面跟着块编号，后面跟着块内容。
 	 */
 	result = GetIncrementalHeaderSize(num_blocks_required);
 	result += BLCKSZ * num_blocks_required;

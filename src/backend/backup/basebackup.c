@@ -1229,6 +1229,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 	bool		isRelationDir = false;	/* Does directory contain relations? */
 	bool		isGlobalDir = false;
 	Oid			dboid = InvalidOid;
+	// 相对块编号
 	BlockNumber *relative_block_numbers = NULL;
 
 	/*
@@ -1541,7 +1542,9 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		{
 			// 常规文件
 			bool		sent = false;
+			// 需要块数
 			unsigned	num_blocks_required = 0;
+			// 截断块长度
 			unsigned	truncation_block_length = 0;
 			char		tarfilenamebuf[MAXPGPATH * 2];
 			char	   *tarfilename = pathbuf + basepathlen + 1;
@@ -1569,6 +1572,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 				}
 
 				// 获取文件备份方式
+				// 填充 num_blocks_required
 				method = GetFileBackupMethod(ib, lookup_path, dboid, relspcoid,
 											 relfilenumber, relForkNum,
 											 segno, statbuf.st_size,
@@ -1672,7 +1676,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 		elog(ERROR, "could not initialize checksum of file \"%s\"",
 			 readfilename);
 
-	// 打开事务文件
+	// 打开临时文件
 	fd = OpenTransientFile(readfilename, O_RDONLY | PG_BINARY);
 	if (fd < 0)
 	{
@@ -1796,6 +1800,7 @@ sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
 		}
 		else
 		{
+			// 增量处理读
 			BlockNumber relative_blkno;
 
 			/*

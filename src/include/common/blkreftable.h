@@ -30,6 +30,7 @@
 #define BLOCKREFTABLE_MAGIC			0x652b137b
 
 typedef struct BlockRefTable BlockRefTable;
+// 块引用表条目
 typedef struct BlockRefTableEntry BlockRefTableEntry;
 typedef struct BlockRefTableReader BlockRefTableReader;
 typedef struct BlockRefTableWriter BlockRefTableWriter;

@@ -266,6 +266,7 @@ typedef struct
 
 static int	numAllocatedDescs = 0;
 static int	maxAllocatedDescs = 0;
+// 分配的描述
 static AllocateDesc *allocatedDescs = NULL;
 
 /*
@@ -2629,6 +2630,8 @@ TryAgain:
 /*
  * Open a file with OpenTransientFilePerm() and pass default file mode for
  * the fileMode parameter.
+ *
+ * 使用 OpenTransientFilePerm() 打开文件并为 fileMode 参数传递默认文件模式。
  */
 int
 OpenTransientFile(const char *fileName, int fileFlags)
@@ -2638,6 +2641,8 @@ OpenTransientFile(const char *fileName, int fileFlags)
 
 /*
  * Like AllocateFile, but returns an unbuffered fd like open(2)
+ *
+ * 与 AllocateFile 类似，但返回一个像 open(2) 一样的无缓冲 fd
  */
 int
 OpenTransientFilePerm(const char *fileName, int fileFlags, mode_t fileMode)
@@ -2657,10 +2662,12 @@ OpenTransientFilePerm(const char *fileName, int fileFlags, mode_t fileMode)
 	/* Close excess kernel FDs. */
 	ReleaseLruFiles();
 
+	// 打开文件
 	fd = BasicOpenFilePerm(fileName, fileFlags, fileMode);
 
 	if (fd >= 0)
 	{
+		// 记录 fd
 		AllocateDesc *desc = &allocatedDescs[numAllocatedDescs];
 
 		desc->kind = AllocateDescRawFD;

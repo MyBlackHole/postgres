@@ -116,6 +116,26 @@ typedef uint16 *BlockRefTableChunk;
  * is the status of the lowest-numbered block covered by this chunk.
  *
  * 'chunk_data' is the array of chunks.
+ *
+ * 状态一个关系叉。
+ *
+ * 'rlocator' 和 'forknum' 标识该条目所属的关系分支。
+ *
+ * “limit_block”是特定块引用表覆盖的LSN范围内的块中关系的最短已知长度。
+ *  如果创建或删除关系分支，则应将其设置为 0。
+ *  如果关系叉被截断，则应将其设置为截断后剩余的块数。
+ *
+ * 'nchunks' 是后面三个数组中每个数组的分配长度。 
+ * 我们只能表示小于 nchunks * BLOCKS_PER_CHUNK 的块号的状态。
+ *
+ * “chunk_size” 是一个存储每个块的分配大小的数组。
+ *
+ * “chunk_usage” 是一个数组，存储每个块中使用的元素数量。
+ * 如果该值小于 MAX_ENTRIES_PER_CHUNK，则相应的块将用作数组；
+ * 否则，相应的块将用作位图。 
+ * 当用作位图时，第一个数组元素的最低有效位是该块覆盖的最低编号块的状态。
+ *
+ * “chunk_data”是块的数组。
  */
 struct BlockRefTableEntry
 {
@@ -123,7 +143,9 @@ struct BlockRefTableEntry
 	BlockNumber limit_block;
 	char		status;
 	uint32		nchunks;
+	// 块分配大小
 	uint16	   *chunk_size;
+	// 存储每个块中使用的元素数量
 	uint16	   *chunk_usage;
 	BlockRefTableChunk *chunk_data;
 };
@@ -167,13 +189,15 @@ typedef struct BlockRefTableSerializedEntry
 {
 	RelFileLocator rlocator;
 	ForkNumber	forknum;
-	// 限制块
+	// 限位块
 	BlockNumber limit_block;
 	uint32		nchunks;
 } BlockRefTableSerializedEntry;
 
 /*
  * Buffer size, so that we avoid doing many small I/Os.
+ *
+ * 缓冲区大小，这样我们就可以避免执行许多小 I/O。
  */
 #define BUFSIZE					65536
 
@@ -211,6 +235,18 @@ typedef struct BlockRefTableBuffer
  * the block numbers for the current chunk to the caller. If the chunk is a
  * bitmap, it's the number of bits we've scanned; otherwise, it's the number
  * of chunk entries we've scanned.
+ *
+ * 用于在从磁盘增量读取块表引用文件时跟踪进度的状态。
+ *
+ * Total_chunks 表示当前正在读取的 RelFileLocator/ForkNumber 组合的块数，consumed_chunks 是已读取的块数。 
+ * （我们总是一次读取单个块的所有信息，因此我们不需要能够表示块已被部分读取的状态。）
+ *
+ * chunk_size 是块大小的数组。 长度由total_chunks 给出。
+ *
+ * chunk_data 保存当前块。
+ *
+ * chunk_position 帮助我们了解在将当前块的块号返回给调用者方面我们取得了多少进展。
+ * 如果块是位图，则它是我们扫描的位数； 否则，它是我们扫描过的块条目的数量。
  */
 struct BlockRefTableReader
 {
@@ -220,17 +256,20 @@ struct BlockRefTableReader
 	void	   *error_callback_arg;
 	// 总块数
 	uint32		total_chunks;
+	// 是已读取的块数
 	uint32		consumed_chunks;
+	// 块大小数组
 	uint16	   *chunk_size;
 	// 块存储缓冲区
 	uint16		chunk_data[MAX_ENTRIES_PER_CHUNK];
-	// 块偏移量
 	uint32		chunk_position;
 };
 
 /*
  * State for keeping track of progress while incrementally writing a block
  * reference table file to disk.
+ *
+ * 用于在将块引用表文件增量写入磁盘时跟踪进度的状态。
  */
 struct BlockRefTableWriter
 {
@@ -320,6 +359,9 @@ BlockRefTableSetLimitBlock(BlockRefTable *brtab,
 
 /*
  * Mark a block in a given relation fork as known to have been modified.
+ * 将给定关系分支中的块标记为已知已被修改。
+ *
+ * blknum: 块编号
  */
 void
 BlockRefTableMarkBlockModified(BlockRefTable *brtab,
@@ -328,6 +370,7 @@ BlockRefTableMarkBlockModified(BlockRefTable *brtab,
 							   BlockNumber blknum)
 {
 	BlockRefTableEntry *brtentry;
+	/* 确保任何填充为零 */
 	BlockRefTableKey key = {{0}};	/* make sure any padding is zero */
 	bool		found;
 #ifndef FRONTEND
@@ -343,6 +386,9 @@ BlockRefTableMarkBlockModified(BlockRefTable *brtab,
 		/*
 		 * We want to set the initial limit block value to something higher
 		 * than any legal block number. InvalidBlockNumber fits the bill.
+		 *
+		 * 我们希望将初始限制块值设置为高于任何合法块号。
+		 * InvalidBlockNumber 符合要求。
 		 */
 		brtentry->limit_block = InvalidBlockNumber;
 		brtentry->nchunks = 0;
@@ -765,6 +811,7 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 		 */
 		if (reader->consumed_chunks > 0)
 		{
+			// chunkno 块号
 			uint32		chunkno = reader->consumed_chunks - 1;
 			uint16		chunk_size = reader->chunk_size[chunkno];
 
@@ -775,6 +822,7 @@ BlockRefTableReaderGetBlocks(BlockRefTableReader *reader,
 				while (reader->chunk_position < BLOCKS_PER_CHUNK &&
 					   blocks_found < nblocks)
 				{
+					// chunkoffset 块偏移量
 					uint16		chunkoffset = reader->chunk_position;
 					uint16		w;
 
@@ -854,6 +902,10 @@ DestroyBlockRefTableReader(BlockRefTableReader *reader)
  *
  * Caller must be able to supply BlockRefTableEntry objects sorted in the
  * appropriate order.
+ *
+ * 准备增量写入块引用表文件。
+ *
+ * 调用者必须能够提供按适当顺序排序的 BlockRefTableEntry 对象。
  */
 BlockRefTableWriter *
 CreateBlockRefTableWriter(io_callback_fn write_callback,
@@ -869,6 +921,7 @@ CreateBlockRefTableWriter(io_callback_fn write_callback,
 	INIT_CRC32C(writer->buffer.crc);
 
 	/* Write magic number. */
+	/* 写入幻数 */
 	BlockRefTableWrite(&writer->buffer, &magic, sizeof(uint32));
 
 	return writer;
@@ -881,6 +934,11 @@ CreateBlockRefTableWriter(io_callback_fn write_callback,
  * tablespace, then database, then relfilenumber, then fork number. Caller
  * is responsible for supplying data in the correct order. If that seems hard,
  * use an in-memory BlockRefTable instead.
+ *
+ * 将一项添加到块引用表文件中。
+ *
+ * 请注意，条目必须按正确的顺序写入，即按表空间排序，然后是数据库，然后是 relfilenumber，然后是 fork 编号。
+ * 调用者负责以正确的顺序提供数据。 如果这看起来很难，请改用内存中的 BlockRefTable。
  */
 void
 BlockRefTableWriteEntry(BlockRefTableWriter *writer, BlockRefTableEntry *entry)
@@ -889,25 +947,30 @@ BlockRefTableWriteEntry(BlockRefTableWriter *writer, BlockRefTableEntry *entry)
 	unsigned	j;
 
 	/* Convert to serialized entry format. */
+	/* 转换为序列化条目格式。 */
 	sentry.rlocator = entry->key.rlocator;
 	sentry.forknum = entry->key.forknum;
 	sentry.limit_block = entry->limit_block;
 	sentry.nchunks = entry->nchunks;
 
 	/* Trim trailing zero entries. */
+	/* 修剪尾随零条目。 */
 	while (sentry.nchunks > 0 && entry->chunk_usage[sentry.nchunks - 1] == 0)
 		sentry.nchunks--;
 
 	/* Write the serialized entry itself. */
+	/* 写入序列化条目本身。 */
 	BlockRefTableWrite(&writer->buffer, &sentry,
 					   sizeof(BlockRefTableSerializedEntry));
 
 	/* Write the untruncated portion of the chunk length array. */
+	/* 写入块长度数组的未截断部分。 */
 	if (sentry.nchunks != 0)
 		BlockRefTableWrite(&writer->buffer, entry->chunk_usage,
 						   sentry.nchunks * sizeof(uint16));
 
 	/* Write the contents of each chunk. */
+	/* 写入每个块的内容。 */
 	for (j = 0; j < entry->nchunks; ++j)
 	{
 		if (entry->chunk_usage[j] == 0)
@@ -958,6 +1021,10 @@ CreateBlockRefTableEntry(RelFileLocator rlocator, ForkNumber forknum)
  *
  * The "limit block" is the shortest known length of the relation within the
  * range of WAL records covered by this block reference table.
+ *
+ * 使用“限制块”的新值更新 BlockRefTableEntry，并忘记任何等于或更高编号的修改块。
+ * 
+ * “限制块”是该块引用表覆盖的 WAL 记录范围内关系的最短已知长度。
  */
 void
 BlockRefTableEntrySetLimitBlock(BlockRefTableEntry *entry,
@@ -1029,6 +1096,7 @@ BlockRefTableEntrySetLimitBlock(BlockRefTableEntry *entry,
 
 /*
  * Mark a block in a given BlockRefTableEntry as known to have been modified.
+ * 将给定 BlockRefTableEntry 中的块标记为已知已被修改。
  */
 void
 BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
@@ -1042,6 +1110,9 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	/*
 	 * Which chunk should store the state of this block? And what is the
 	 * offset of this block relative to the start of that chunk?
+	 *
+	 * 哪个块应该存储该块的状态？ 
+	 * 该块相对于该块的开头的偏移量是多少？
 	 */
 	chunkno = blknum / BLOCKS_PER_CHUNK;
 	chunkoffset = blknum % BLOCKS_PER_CHUNK;
@@ -1049,6 +1120,8 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	/*
 	 * If 'nchunks' isn't big enough for us to be able to represent the state
 	 * of this block, we need to enlarge our arrays.
+	 *
+	 * 如果“nchunks”不够大，无法代表该块的状态，则需要扩大数组。
 	 */
 	if (chunkno >= entry->nchunks)
 	{
@@ -1058,10 +1131,13 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 		/*
 		 * New array size is a power of 2, at least 16, big enough so that
 		 * chunkno will be a valid array index.
+		 *
+		 * 新数组大小是 2 的幂，至少 16，足够大，以便 chunkno 将成为有效的数组索引。
 		 */
 		max_chunks = Max(16, entry->nchunks);
 		while (max_chunks < chunkno + 1)
-			max_chunks *= 2;
+			max_chunks *= 2; /* NOTE: 此处有问题? */
+		// 额外块
 		extra_chunks = max_chunks - entry->nchunks;
 
 		if (entry->nchunks == 0)
@@ -1108,6 +1184,8 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	/*
 	 * If the number of entries in this chunk is already maximum, it must be a
 	 * bitmap. Just set the appropriate bit.
+	 *
+	 * 如果该块中的条目数已经达到最大值，则它必须是位图。 只需设置适当的位即可。
 	 */
 	if (entry->chunk_usage[chunkno] == MAX_ENTRIES_PER_CHUNK)
 	{
@@ -1122,6 +1200,10 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	 * There is an existing chunk and it's in array format. Let's find out
 	 * whether it already has an entry for this block. If so, we do not need
 	 * to do anything.
+	 *
+	 * 有一个现有的块，它是数组格式的。
+	 * 让我们看看它是否已经有该块的条目。
+	 * 如果是这样，我们不需要做任何事情。
 	 */
 	for (i = 0; i < entry->chunk_usage[chunkno]; ++i)
 	{
@@ -1132,6 +1214,8 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	/*
 	 * If the number of entries currently used is one less than the maximum,
 	 * it's time to convert to bitmap format.
+	 *
+	 * 如果当前使用的条目数比最大值少 1，则需要转换为位图格式。
 	 */
 	if (entry->chunk_usage[chunkno] == MAX_ENTRIES_PER_CHUNK - 1)
 	{
@@ -1139,9 +1223,11 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 		unsigned	j;
 
 		/* Allocate a new chunk. */
+		/* 分配一个新块。 */
 		newchunk = palloc0(MAX_ENTRIES_PER_CHUNK * sizeof(uint16));
 
 		/* Set the bit for each existing entry. */
+		/* 为每个现有条目设置位。 */
 		for (j = 0; j < entry->chunk_usage[chunkno]; ++j)
 		{
 			unsigned	coff = entry->chunk_data[chunkno][j];
@@ -1151,10 +1237,12 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 		}
 
 		/* Set the bit for the new entry. */
+		/* 设置新条目的位。 */
 		newchunk[chunkoffset / BLOCKS_PER_ENTRY] |=
 			1 << (chunkoffset % BLOCKS_PER_ENTRY);
 
 		/* Swap the new chunk into place and update metadata. */
+		/* 将新块交换到位并更新元数据。 */
 		pfree(entry->chunk_data[chunkno]);
 		entry->chunk_data[chunkno] = newchunk;
 		entry->chunk_size[chunkno] = MAX_ENTRIES_PER_CHUNK;
@@ -1166,6 +1254,9 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	 * OK, we currently have an array, and we don't need to convert to a
 	 * bitmap, but we do need to add a new element. If there's not enough
 	 * room, we'll have to expand the array.
+	 *
+	 * 好的，我们目前有一个数组，我们不需要转换为位图，但我们确实需要添加一个新元素。
+	 * 如果没有足够的空间，我们就必须扩展阵列。
 	 */
 	if (entry->chunk_usage[chunkno] == entry->chunk_size[chunkno])
 	{
@@ -1178,6 +1269,7 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	}
 
 	/* Now we can add the new entry. */
+	/* 现在我们可以添加新条目。 */
 	entry->chunk_data[chunkno][entry->chunk_usage[chunkno]] =
 		chunkoffset;
 	entry->chunk_usage[chunkno]++;
@@ -1338,6 +1430,8 @@ BlockRefTableRead(BlockRefTableReader *reader, void *data, int length)
 /*
  * Supply data to a BlockRefTableBuffer for write to the underlying File,
  * and update the running CRC calculation for that data.
+ *
+ * 向 BlockRefTableBuffer 提供数据以写入底层文件，并更新该数据正在运行的 CRC 计算。
  */
 static void
 BlockRefTableWrite(BlockRefTableBuffer *buffer, void *data, int length)
@@ -1346,6 +1440,7 @@ BlockRefTableWrite(BlockRefTableBuffer *buffer, void *data, int length)
 	COMP_CRC32C(buffer->crc, data, length);
 
 	/* If the new data can't fit into the buffer, flush the buffer. */
+	/* 如果新数据无法放入缓冲区，则刷新缓冲区。 */
 	if (buffer->used + length > BUFSIZE)
 	{
 		buffer->io_callback(buffer->io_callback_arg, buffer->data,
@@ -1354,6 +1449,7 @@ BlockRefTableWrite(BlockRefTableBuffer *buffer, void *data, int length)
 	}
 
 	/* If the new data would fill the buffer, or more, write it directly. */
+	/* 如果新数据将填满缓冲区或更多，则直接写入。 */
 	if (length >= BUFSIZE)
 	{
 		buffer->io_callback(buffer->io_callback_arg, data, length);
@@ -1361,6 +1457,7 @@ BlockRefTableWrite(BlockRefTableBuffer *buffer, void *data, int length)
 	}
 
 	/* Otherwise, copy the new data into the buffer. */
+	/* 否则，将新数据复制到缓冲区中 */
 	memcpy(&buffer->data[buffer->used], data, length);
 	buffer->used += length;
 	Assert(buffer->used <= BUFSIZE);
