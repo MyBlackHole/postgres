@@ -60,7 +60,9 @@ typedef struct CheckPoint
 	MultiXactId nextMulti;		/* next free MultiXactId */
 	/* 下一个空闲的事务组偏移 */
 	MultiXactOffset nextMultiOffset;	/* next free MultiXact offset */
+	// 集群最小最旧的未清理的事务 id
 	TransactionId oldestXid;	/* cluster-wide minimum datfrozenxid */
+	// 具有最小 datfrozenxid 的数据库
 	Oid			oldestXidDB;	/* database with minimum datfrozenxid */
 	/* 集群范围内的最小 datminmxid */
 	MultiXactId oldestMulti;	/* cluster-wide minimum datminmxid */
@@ -105,11 +107,17 @@ typedef struct CheckPoint
 typedef enum DBState
 {
 	DB_STARTUP = 0,
+	// 数据库已关闭
 	DB_SHUTDOWNED,
+	// 数据库恢复中关闭
 	DB_SHUTDOWNED_IN_RECOVERY,
+	// 数据库关闭中
 	DB_SHUTDOWNING,
+	// 正在进行奔溃恢复
 	DB_IN_CRASH_RECOVERY,
+	// 正在进行归档恢复
 	DB_IN_ARCHIVE_RECOVERY,
+	// 生产运行中
 	DB_IN_PRODUCTION,
 } DBState;
 
@@ -185,10 +193,15 @@ typedef struct ControlFileData
 	 * from a backup, and must see a backup-end record before we can safely
 	 * start up.
 	 */
+	// 最小恢复点
 	XLogRecPtr	minRecoveryPoint;
+	// 最小恢复点时间线
 	TimeLineID	minRecoveryPointTLI;
+	// 备份启动点
 	XLogRecPtr	backupStartPoint;
+	// 备份结束点
 	XLogRecPtr	backupEndPoint;
+	// 备份结束依赖
 	bool		backupEndRequired;
 
 	/*

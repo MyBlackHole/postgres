@@ -339,6 +339,11 @@ SetDatabasePath(const char *path)
  * Validate the proposed data directory.
  *
  * Also initialize file and directory create modes and mode mask.
+ *
+ * 校验数据目录
+ * 校验用户
+ * 校验权限
+ * 校验版本
  */
 void
 checkDataDir(void)

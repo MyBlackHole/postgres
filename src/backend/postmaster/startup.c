@@ -210,6 +210,7 @@ StartupProcExit(int code, Datum arg)
 
 /* ----------------------------------
  *	Startup Process main entry point
+ * 启动进程主入口点
  * ----------------------------------
  */
 void
@@ -255,6 +256,7 @@ StartupProcessMain(char *startup_data, size_t startup_data_len)
 	/*
 	 * Do what we came for.
 	 */
+	// 启动 xlog
 	StartupXLOG();
 
 	/*

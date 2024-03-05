@@ -132,6 +132,7 @@ StaticAssertDecl(lengthof(SlotInvalidationCauses) == (RS_INVAL_MAX_CAUSES + 1),
 #define SLOT_VERSION	5		/* version for new files */
 
 /* Control array for replication slot management */
+/* 用于复制槽管理的控制数组 */
 ReplicationSlotCtlData *ReplicationSlotCtl = NULL;
 
 /* My backend's replication slot in the shared memory array */
@@ -1890,6 +1891,8 @@ CheckPointReplicationSlots(bool is_shutdown)
  * Load all replication slots from disk into memory at server startup. This
  * needs to be run before we start crash recovery.
  */
+// 服务器启动时将所有复制槽从磁盘加载到内存中。
+// 这需要在我们开始崩溃恢复之前运行。
 void
 StartupReplicationSlots(void)
 {
@@ -1899,6 +1902,7 @@ StartupReplicationSlots(void)
 	elog(DEBUG1, "starting up replication slots");
 
 	/* restore all slots by iterating over all on-disk entries */
+	/* 通过迭代所有磁盘条目来恢复所有槽 */
 	replication_dir = AllocateDir("pg_replslot");
 	while ((replication_de = ReadDir(replication_dir, "pg_replslot")) != NULL)
 	{
@@ -1917,6 +1921,7 @@ StartupReplicationSlots(void)
 			continue;
 
 		/* we crashed while a slot was being setup or deleted, clean up */
+		/* 我们在设置或删除插槽时崩溃，清理 */
 		if (pg_str_endswith(replication_de->d_name, ".tmp"))
 		{
 			if (!rmtree(path, true))
@@ -1931,15 +1936,18 @@ StartupReplicationSlots(void)
 		}
 
 		/* looks like a slot in a normal state, restore */
+		/* 看起来像一个处于正常状态的槽，恢复 */
 		RestoreSlotFromDisk(replication_de->d_name);
 	}
 	FreeDir(replication_dir);
 
 	/* currently no slots exist, we're done. */
+	/* 目前不存在插槽，我们完成了。 */
 	if (max_replication_slots <= 0)
 		return;
 
 	/* Now that we have recovered all the data, compute replication xmin */
+	/* 现在我们已经恢复了所有数据，计算复制 xmin */
 	ReplicationSlotsComputeRequiredXmin(false);
 	ReplicationSlotsComputeRequiredLSN();
 }
@@ -2166,6 +2174,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 
 /*
  * Load a single slot from disk into memory.
+ * 将单个插槽从磁盘加载到内存中。
  */
 static void
 RestoreSlotFromDisk(const char *name)

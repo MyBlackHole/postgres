@@ -185,6 +185,7 @@ retry:
  * to the caller to properly lock ControlFileLock when calling this
  * routine in the backend.
  */
+// 更新控制文件
 void
 update_controlfile(const char *DataDir,
 				   ControlFileData *ControlFile, bool do_sync)

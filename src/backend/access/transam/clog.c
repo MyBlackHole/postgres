@@ -78,6 +78,7 @@
  * Although we return an int64 the actual value can't currently exceed
  * 0xFFFFFFFF/CLOG_XACTS_PER_PAGE.
  */
+// 通过事务 id 获取页号
 static inline int64
 TransactionIdToPage(TransactionId xid)
 {
@@ -104,6 +105,7 @@ TransactionIdToPage(TransactionId xid)
 
 /*
  * Link to shared-memory data structures for CLOG control
+ * 链接到共享内存数据结构以进行CLOG控制 (xact)
  */
 static SlruCtlData XactCtlData;
 
@@ -881,12 +883,14 @@ StartupCLOG(void)
 
 	/*
 	 * Initialize our idea of the latest page number.
+	 * 初始化最新页码。
 	 */
 	pg_atomic_write_u64(&XactCtl->shared->latest_page_number, pageno);
 }
 
 /*
  * This must be called ONCE at the end of startup/recovery.
+ * 这必须在启动/恢复结束时调用一次。
  */
 void
 TrimCLOG(void)
@@ -909,6 +913,11 @@ TrimCLOG(void)
 	 * nextXid is exactly at a page boundary; and it's likely that the
 	 * "current" page doesn't exist yet in that case.)
 	 */
+	// 将当前堵塞页面的剩余部分清零
+	// 在正常情况下，它应该已经为零，但至少从理论上讲，XLOG 重放似乎可能会确定一个 nextXID 值，该值小于实际使用的最后一个 XID 并由先前的数据库生命周期标记（因为子事务提交会写入堵塞，但会使 无 WAL 条目）
+	// 让我们安全一点
+	// （我们不必担心当前页面之外的页面，因为这些页面在第一次使用时将被清零
+	// 出于同样的原因，当 nextXid 恰好位于页面边界时，无需执行任何操作； 在这种情况下，“当前”页面可能还不存在。）
 	if (TransactionIdToPgIndex(xid) != 0)
 	{
 		int			byteno = TransactionIdToByte(xid);
@@ -920,8 +929,10 @@ TrimCLOG(void)
 		byteptr = XactCtl->shared->page_buffer[slotno] + byteno;
 
 		/* Zero so-far-unused positions in the current byte */
+		/* 当前字节中迄今为止未使用的位置为零 */
 		*byteptr &= (1 << bshift) - 1;
 		/* Zero the rest of the page */
+		/* 将页面的其余部分清零 */
 		MemSet(byteptr + 1, 0, BLCKSZ - byteno - 1);
 
 		XactCtl->shared->page_dirty[slotno] = true;

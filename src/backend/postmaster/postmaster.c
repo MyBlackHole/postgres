@@ -911,12 +911,17 @@ PostmasterMain(int argc, char *argv[])
 	 * The postmaster will do the test once at startup, and then its child
 	 * processes will inherit the correct function pointer and not need to
 	 * repeat the test.
+	 *
+	 * 处理本地控制文件
+	 * 恢复全局控制对象 (ControlFileData)
 	 */
 	LocalProcessControlFile(false);
 
 	/*
 	 * Register the apply launcher.  It's probably a good idea to call this
 	 * before any modules had a chance to take the background worker slots.
+	 *
+	 * 注册应用启动器
 	 */
 	ApplyLauncherRegister();
 
@@ -957,13 +962,15 @@ PostmasterMain(int argc, char *argv[])
 	 * 现在可加载模块有机会请求额外的
 	 * 共享内存，确定任何运行时计算的 GUC 的值
 	 * 取决于所需的共享内存量。
-	 * GUC (Grand Unified Configuration): 大统一配置
+	 * GUC (通用配置)
 	 */
 	InitializeShmemGUCs();
 
 	/*
 	 * Now that modules have been loaded, we can process any custom resource
 	 * managers specified in the wal_consistency_checking GUC.
+	 *
+	 * wal 一致性检查初始化
 	 */
 	InitializeWalConsistencyChecking();
 
@@ -1016,6 +1023,8 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * Initialize pipe (or process handle on Windows) that allows children to
 	 * wake up from sleep on postmaster death.
+	 *
+	 * 初始化允许子进程死亡时唤醒
 	 */
 	InitPostmasterDeathWatchHandle();
 
@@ -1061,10 +1070,13 @@ PostmasterMain(int argc, char *argv[])
 	 * Note that promotion signal files need to be removed before the startup
 	 * process is invoked. Because, after that, they can be used by
 	 * postmaster's SIGUSR1 signal handler.
+	 *
+	 * 删除 promote
 	 */
 	RemovePromoteSignalFiles();
 
 	/* Do the same for logrotate signal file */
+	// 删除 logrotate
 	RemoveLogrotateSignalFiles();
 
 	/* Remove any outdated file holding the current log filenames. */
@@ -1318,11 +1330,14 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * Remove old temporary files.  At this point there can be no other
 	 * Postgres processes running in this directory, so this should be safe.
+	 *
+	 * 删除临时文件
 	 */
 	RemovePgTempFiles();
 
 	/*
 	 * Initialize the autovacuum subsystem (again, no process start yet)
+	 * 自动清理子系统
 	 */
 	autovac_init();
 
@@ -1982,6 +1997,9 @@ canAcceptConnections(int backend_type)
  *
  * Note: we pass am_syslogger as a boolean because we don't want to set
  * the global variable yet when this is called.
+ *
+ * 关闭 postmaster 打开的所有 sockets
+ * 因为是 fork postmaster 的所以需要清理
  */
 void
 ClosePostmasterPorts(bool am_syslogger)
@@ -3574,6 +3592,10 @@ TerminateChildren(int signal)
  * returns: STATUS_ERROR if the fork failed, STATUS_OK otherwise.
  *
  * Note: if you change this code, also consider StartAutovacuumWorker.
+ *
+ * 启动后端处理进程
+ * 业务开始准备
+ * 进行业务处理
  */
 static int
 BackendStartup(ClientSocket *client_sock)
@@ -4734,6 +4756,9 @@ pgwin32_register_deadchild_callback(HANDLE procHandle, DWORD procId)
  *
  * Called once in the postmaster, so that child processes can subsequently
  * monitor if their parent is dead.
+ *
+ * 初始化管道（或 Windows 上的进程句柄），
+ * 允许子进程在 postmaster 死亡时从睡眠中唤醒。
  */
 static void
 InitPostmasterDeathWatchHandle(void)
@@ -4756,6 +4781,7 @@ InitPostmasterDeathWatchHandle(void)
 				 errmsg_internal("could not create pipe to monitor postmaster death: %m")));
 
 	/* Notify fd.c that we've eaten two FDs for the pipe. */
+	/* 通知 fd.c 我们已经为管道吃掉了两个 FD */
 	ReserveExternalFD();
 	ReserveExternalFD();
 

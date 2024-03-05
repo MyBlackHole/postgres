@@ -206,6 +206,8 @@ FullTransactionIdAdvance(FullTransactionId *dest)
  * used just to generate useful messages when xidWarnLimit or xidStopLimit
  * are exceeded.
  */
+
+// datfrozenxid 用于记录每个数据库中最旧的未清理的事务ID
 typedef struct TransamVariablesData
 {
 	/*
@@ -216,18 +218,24 @@ typedef struct TransamVariablesData
 
 	/*
 	 * These fields are protected by XidGenLock.
+	 * 这些字段受 XidGenLock 保护。
 	 */
 	FullTransactionId nextXid;	/* next XID to assign */
 
+	// 集群最小最旧的未清理的事务 id
 	TransactionId oldestXid;	/* cluster-wide minimum datfrozenxid */
+	// 在这里开始强制自动清理
 	TransactionId xidVacLimit;	/* start forcing autovacuums here */
+	// 在这里开始抱怨
 	TransactionId xidWarnLimit; /* start complaining here */
 	TransactionId xidStopLimit; /* refuse to advance nextXid beyond here */
 	TransactionId xidWrapLimit; /* where the world ends */
+	// 具有最小 datfrozenxid 的数据库
 	Oid			oldestXidDB;	/* database with minimum datfrozenxid */
 
 	/*
 	 * These fields are protected by CommitTsLock
+	 * 这些字段受 CommitTsLock 保护
 	 */
 	TransactionId oldestCommitTsXid;
 	TransactionId newestCommitTsXid;
@@ -249,7 +257,9 @@ typedef struct TransamVariablesData
 
 	/*
 	 * These fields are protected by XactTruncationLock
+	 * 这些字段受 XactTruncationLock 保护
 	 */
+	// 有效的最老的事务 id
 	TransactionId oldestClogXid;	/* oldest it's safe to look up in clog */
 
 } TransamVariablesData;

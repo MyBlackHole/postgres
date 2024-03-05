@@ -628,6 +628,7 @@ ZeroCommitTsPage(int64 pageno, bool writeXlog)
  * This must be called ONCE during postmaster or standalone-backend startup,
  * after StartupXLOG has initialized TransamVariables->nextXid.
  */
+// 在 StartupXLOG 初始化 TransamVariables->nextXid 之后，必须在 postmaster 或独立后端启动期间调用一次。
 void
 StartupCommitTs(void)
 {

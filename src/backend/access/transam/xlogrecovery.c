@@ -65,6 +65,7 @@
 #include "utils/pg_rusage.h"
 
 /* Unsupported old recovery command file names (relative to $PGDATA) */
+// 恢复信号文件
 #define RECOVERY_COMMAND_FILE	"recovery.conf"
 #define RECOVERY_COMMAND_DONE	"recovery.done"
 
@@ -119,6 +120,7 @@ bool		wal_receiver_create_temp_slot = false;
  */
 RecoveryTargetTimeLineGoal recoveryTargetTimeLineGoal = RECOVERY_TARGET_TIMELINE_LATEST;
 TimeLineID	recoveryTargetTLIRequested = 0;
+// 恢复目标时间线
 TimeLineID	recoveryTargetTLI = 0;
 static List *expectedTLEs;
 static TimeLineID curFileTLI;
@@ -147,6 +149,7 @@ static bool StandbyModeRequested = false;
 bool		StandbyMode = false;
 
 /* was a signal file present at startup? */
+/* 启动时是否存在信号文件？ */
 static bool standby_signal_file_found = false;
 static bool recovery_signal_file_found = false;
 
@@ -164,8 +167,14 @@ static bool recovery_signal_file_found = false;
  * reading the checkpoint record, because the REDO record can precede the
  * checkpoint record.
  */
+// CheckPointLoc 是检查点记录的位置，决定从哪里开始重放。 
+// 它来自备份标签文件或控制文件。
 static XLogRecPtr CheckPointLoc = InvalidXLogRecPtr;
 static TimeLineID CheckPointTLI = 0;
+// RedoStartLSN 是检查点的 REDO 位置，同样来自备份标签文件或控制文件
+// 在待机模式下，XLOG流通常从发现无效记录的位置开始
+// 但是如果我们连初始的检查点记录都无法读取，我们就使用REDO位置而不是检查点位置作为XLOG流的开始位置
+// 否则，我们在读取检查点记录后必须向后跳转到 REDO 位置，因为 REDO 记录可以位于检查点记录之前
 static XLogRecPtr RedoStartLSN = InvalidXLogRecPtr;
 static TimeLineID RedoStartTLI = 0;
 
@@ -185,6 +194,7 @@ static bool LocalPromoteIsTriggered = false;
 static bool doRequestWalReceiverReply;
 
 /* XLogReader object used to parse the WAL records */
+/* XLogReader对象用于解析 WAL 记录 */
 static XLogReaderState *xlogreader = NULL;
 
 /* XLogPrefetcher object used to consume WAL records with read-ahead */
@@ -300,6 +310,7 @@ static char *primary_image_masked = NULL;
 
 /*
  * Shared-memory state for WAL recovery.
+ * WAL 恢复的共享内存状态。
  */
 typedef struct XLogRecoveryCtlData
 {
@@ -334,6 +345,7 @@ typedef struct XLogRecoveryCtlData
 
 	/*
 	 * Last record successfully replayed.
+	 * 最后一条记录已成功重播。
 	 */
 	XLogRecPtr	lastReplayedReadRecPtr; /* start position */
 	XLogRecPtr	lastReplayedEndRecPtr;	/* end+1 position */
@@ -537,6 +549,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	/*
 	 * Check for signal files, and if so set up state for offline recovery
 	 */
+	// 检查信号文件，如果有则设置离线恢复状态
 	readRecoverySignalFile();
 	validateRecoveryParameters();
 
@@ -589,6 +602,8 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	 * process after checking for signal files and after performing validation
 	 * of the recovery parameters.
 	 */
+	// 读取 backup_label 文件。 
+	// 我们希望在检查信号文件并验证恢复参数后运行恢复过程的这一部分。
 	if (read_backup_label(&CheckPointLoc, &CheckPointTLI, &backupEndRequired,
 						  &backupFromStandby))
 	{
@@ -632,6 +647,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 			ereport(DEBUG1,
 					(errmsg_internal("checkpoint record is at %X/%X",
 									 LSN_FORMAT_ARGS(CheckPointLoc))));
+			// 即使关闭也强制恢复
 			InRecovery = true;	/* force recovery even if SHUTDOWNED */
 
 			/*
@@ -667,6 +683,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		}
 
 		/* Read the tablespace_map file if present and create symlinks. */
+		/* 读取 tablespace_map 文件（如果存在）并创建符号链接 */
 		if (read_tablespace_map(&tablespaces))
 		{
 			ListCell   *lc;
@@ -695,6 +712,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 			}
 
 			/* tell the caller to delete it later */
+			/* 告诉调用者稍后删除它 */
 			haveTblspcMap = true;
 		}
 
@@ -704,6 +722,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	else
 	{
 		/* No backup_label file has been found if we are here. */
+		/* 如果我们在这里的话，还没有找到 backup_label 文件。 */
 
 		/*
 		 * If tablespace_map file is present without backup_label file, there
@@ -771,6 +790,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 							LSN_FORMAT_ARGS(ControlFile->backupStartPoint))));
 
 		/* Get the last valid checkpoint record. */
+		/* 获取最后一个有效的检查点记录 */
 		CheckPointLoc = ControlFile->checkPoint;
 		CheckPointTLI = ControlFile->checkPointCopy.ThisTimeLineID;
 		RedoStartLSN = ControlFile->checkPointCopy.redo;
@@ -1022,7 +1042,10 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
  *
  * See if there is a recovery command file (recovery.conf), and if so
  * throw an ERROR since as of PG12 we no longer recognize that.
+ *
  */
+// 查看是否有任何恢复信号文件，如果有，则设置恢复状态。
+// 查看是否有恢复命令文件 (recovery.conf)，如果有，则抛出错误，因为从 PG12 开始我们不再识别它。
 static void
 readRecoverySignalFile(void)
 {
@@ -1508,6 +1531,8 @@ FinishWalRecovery(void)
 	 *
 	 * An important side-effect of this is to load the last page into
 	 * xlogreader. The caller uses it to initialize the WAL for writing.
+	 *
+	 * 确定接下来从哪里开始写入WAL。
 	 */
 	if (!InRecovery)
 	{
@@ -1648,6 +1673,7 @@ ShutdownWalRecovery(void)
  *
  * If the system was shut down cleanly, this is never called.
  */
+// 执行 wal 恢复
 void
 PerformWalRecovery(void)
 {
@@ -1681,6 +1707,7 @@ PerformWalRecovery(void)
 	SpinLockRelease(&XLogRecoveryCtl->info_lck);
 
 	/* Also ensure XLogReceiptTime has a sane value */
+	/* 还要确保 XLogReceiptTime 具有合理的值 */
 	XLogReceiptTime = GetCurrentTimestamp();
 
 	/*
@@ -1698,10 +1725,12 @@ PerformWalRecovery(void)
 	/*
 	 * Find the first record that logically follows the checkpoint --- it
 	 * might physically precede it, though.
+	 * 找到逻辑上跟随检查点的第一条记录--- 不过，它可能在物理上先于它。
 	 */
 	if (RedoStartLSN < CheckPointLoc)
 	{
 		/* back up to find the record */
+		/* 备份查找记录 */
 		replayTLI = RedoStartTLI;
 		XLogPrefetcherBeginRead(xlogprefetcher, RedoStartLSN);
 		record = ReadRecord(xlogprefetcher, PANIC, false, replayTLI);
@@ -1720,6 +1749,7 @@ PerformWalRecovery(void)
 	else
 	{
 		/* just have to read next record after CheckPoint */
+		/* 只需要读取 CheckPoint 之后的下一条记录 */
 		Assert(xlogreader->ReadRecPtr == CheckPointLoc);
 		replayTLI = CheckPointTLI;
 		record = ReadRecord(xlogprefetcher, LOG, false, replayTLI);
@@ -1746,6 +1776,7 @@ PerformWalRecovery(void)
 
 		/*
 		 * main redo apply loop
+		 * 主重做应用循环
 		 */
 		do
 		{
@@ -1802,6 +1833,8 @@ PerformWalRecovery(void)
 			/*
 			 * If we've been asked to lag the primary, wait on latch until
 			 * enough time has passed.
+			 *
+			 * 如果我们被要求滞后主数据库，请等待闩锁，直到经过足够的时间。
 			 */
 			if (recoveryApplyDelay(xlogreader))
 			{
@@ -1818,10 +1851,12 @@ PerformWalRecovery(void)
 
 			/*
 			 * Apply the record
+			 * 应用记录
 			 */
 			ApplyWalRecord(xlogreader, record, &replayTLI);
 
 			/* Exit loop if we reached inclusive recovery target */
+			/* 如果我们达到包容性恢复目标，则退出循环 */
 			if (recoveryStopsAfter(xlogreader))
 			{
 				reachedRecoveryTarget = true;
@@ -1829,6 +1864,7 @@ PerformWalRecovery(void)
 			}
 
 			/* Else, try to fetch the next WAL record */
+			/* 否则，尝试获取下一条 WAL 记录 */
 			record = ReadRecord(xlogprefetcher, LOG, false, replayTLI);
 		} while (record != NULL);
 
@@ -2421,6 +2457,8 @@ checkTimeLineSwitch(XLogRecPtr lsn, TimeLineID newTLI, TimeLineID prevTLI,
  * in *recordXtime. If the record type has no timestamp, returns false.
  * Currently, only transaction commit/abort records and restore points contain
  * timestamps.
+ *
+ * 从 WAL 记录中提取时间戳。
  */
 static bool
 getRecordTimestamp(XLogReaderState *record, TimestampTz *recordXtime)
@@ -2616,6 +2654,7 @@ recoveryStopsBefore(XLogReaderState *record)
 	}
 
 	/* Otherwise we only consider stopping before COMMIT or ABORT records. */
+	/* 否则我们只考虑在 COMMIT 或 ABORT 记录之前停止。 */
 	if (XLogRecGetRmid(record) != RM_XACT_ID)
 		return false;
 
@@ -2743,6 +2782,7 @@ recoveryStopsAfter(XLogReaderState *record)
 	/*
 	 * There can be many restore points that share the same name; we stop at
 	 * the first one.
+	 * 可以有许多共享相同名称的还原点； 我们停在第一个。
 	 */
 	if (recoveryTarget == RECOVERY_TARGET_NAME &&
 		rmid == RM_XLOG_ID && info == XLOG_RESTORE_POINT)
@@ -2768,6 +2808,7 @@ recoveryStopsAfter(XLogReaderState *record)
 	}
 
 	/* Check if the target LSN has been reached */
+	/* 检查是否到达目标LSN */
 	if (recoveryTarget == RECOVERY_TARGET_LSN &&
 		recoveryTargetInclusive &&
 		record->ReadRecPtr >= recoveryTargetLSN)
@@ -3163,6 +3204,14 @@ ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
 			 * complete record, so if we did this, we would later create an
 			 * overwrite contrecord in the wrong place, breaking everything.
 			 */
+			// 当我们发现 WAL 以不完整的记录结束时，请跟踪该记录。
+			// 恢复完成后，我们将写入一条记录来向下游 WAL 读取器指示该部分将被忽略。
+			//
+			// 但是，当 ArchiveRecoveryRequested = true 时，
+			// 我们将在恢复结束时切换到新的时间线。
+			// 我们只会将 WAL 复制到新的时间线，直到最后一个完整记录的末尾，
+			// 因此如果我们这样做，我们稍后会在错误的位置创建一个覆盖记录，
+			// 从而破坏所有内容。
 			if (!ArchiveRecoveryRequested &&
 				!XLogRecPtrIsInvalid(xlogreader->abortedRecPtr))
 			{
@@ -4044,6 +4093,7 @@ emode_for_corrupt_record(int emode, XLogRecPtr RecPtr)
 
 /*
  * Subroutine to try to fetch and validate a prior checkpoint record.
+ * 尝试获取并验证先前检查点记录的子例程。
  */
 static XLogRecord *
 ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
@@ -4449,6 +4499,7 @@ CheckForStandbyTrigger(void)
 
 /*
  * Remove the files signaling a standby promotion request.
+ * 删除发出备用升级请求信号的文件。
  */
 void
 RemovePromoteSignalFiles(void)

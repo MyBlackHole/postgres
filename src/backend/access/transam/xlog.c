@@ -448,6 +448,7 @@ typedef struct XLogCtlInsert
 	 * To read these fields, you must hold an insertion lock. To modify them,
 	 * you must hold ALL the locks.
 	 */
+	// 当前插入重做点
 	XLogRecPtr	RedoRecPtr;		/* current redo point for insertions */
 	bool		fullPageWrites;
 
@@ -480,6 +481,7 @@ typedef struct XLogCtlData
 	/* Protected by info_lck: */
 	XLogwrtRqst LogwrtRqst;
 	XLogRecPtr	RedoRecPtr;		/* a recent copy of Insert->RedoRecPtr */
+	// 最新检查点的 nextXid
 	FullTransactionId ckptFullXid;	/* nextXid of latest checkpoint */
 	XLogRecPtr	asyncXactLSN;	/* LSN of newest async commit/abort */
 	XLogRecPtr	replicationSlotMinLSN;	/* oldest LSN needed by any slot */
@@ -3851,6 +3853,7 @@ UpdateLastRemovedPtr(char *filename)
  * This is called at the beginning of recovery after a previous crash,
  * at a point where no other processes write fresh WAL data.
  */
+// 删除pg_wal中的所有临时日志文件
 static void
 RemoveTempXlogFiles(void)
 {
@@ -4360,6 +4363,7 @@ ReadControlFile(void)
 						XLOG_CONTROL_FILE)));
 
 	pgstat_report_wait_start(WAIT_EVENT_CONTROL_FILE_READ);
+	// 读取控制文件内容
 	r = read(fd, ControlFile, sizeof(ControlFileData));
 	if (r != sizeof(ControlFileData))
 	{
@@ -4780,6 +4784,8 @@ assign_wal_consistency_checking(const char *newval, void *extra)
  * wal_consistency_checking GUC, processing was deferred.  Now that
  * shared_preload_libraries have been loaded, process wal_consistency_checking
  * again.
+ *
+ * 初始化 wal 一致性检查
  */
 void
 InitializeWalConsistencyChecking(void)
@@ -5374,6 +5380,7 @@ CleanupAfterArchiveRecovery(TimeLineID EndOfLogTLI, XLogRecPtr EndOfLog,
  * listed in Administrator's Overview section in high-availability.sgml.
  * If you change them, don't forget to update the list.
  */
+// 参数检查
 static void
 CheckRequiredParameterValues(void)
 {
@@ -5417,6 +5424,8 @@ CheckRequiredParameterValues(void)
 
 /*
  * This must be called ONCE during postmaster or standalone-backend startup
+ *
+ * 在 postmaster 或独立后端启动期间必须调用一次
  */
 void
 StartupXLOG(void)
@@ -5425,6 +5434,7 @@ StartupXLOG(void)
 	CheckPoint	checkPoint;
 	bool		wasShutdown;
 	bool		didCrash;
+	// 表空间映射存在状态
 	bool		haveTblspcMap;
 	bool		haveBackupLabel;
 	XLogRecPtr	EndOfLog;
@@ -5542,6 +5552,7 @@ StartupXLOG(void)
 	if (ControlFile->state != DB_SHUTDOWNED &&
 		ControlFile->state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
+		// 清除 xlog temp 文件
 		RemoveTempXlogFiles();
 		SyncDataDirectory();
 		didCrash = true;
@@ -5557,15 +5568,19 @@ StartupXLOG(void)
 	 * starting checkpoint, and sets InRecovery and ArchiveRecoveryRequested.
 	 * It also applies the tablespace map file, if any.
 	 */
+	// 初始化 wal 日志恢复
 	InitWalRecovery(ControlFile, &wasShutdown,
 					&haveBackupLabel, &haveTblspcMap);
+	// 检查点
 	checkPoint = ControlFile->checkPointCopy;
 
 	/* initialize shared memory variables from the checkpoint record */
+	/* 从检查点记录初始化共享内存变量 */
 	TransamVariables->nextXid = checkPoint.nextXid;
 	TransamVariables->nextOid = checkPoint.nextOid;
 	TransamVariables->oidCount = 0;
 	MultiXactSetNextMXact(checkPoint.nextMulti, checkPoint.nextMultiOffset);
+	// 检查设置有效的最老的事务 id
 	AdvanceOldestClogXid(checkPoint.oldestXid);
 	SetTransactionIdLimit(checkPoint.oldestXid, checkPoint.oldestXidDB);
 	SetMultiXactIdLimit(checkPoint.oldestMulti, checkPoint.oldestMultiDB, true);
@@ -5591,18 +5606,22 @@ StartupXLOG(void)
 	 * Initialize replication slots, before there's a chance to remove
 	 * required resources.
 	 */
+	// 启动复制槽
 	StartupReplicationSlots();
 
 	/*
 	 * Startup logical state, needs to be setup now so we have proper data
 	 * during crash recovery.
 	 */
+	// 现在需要设置启动逻辑状态，以便我们在崩溃恢复期间拥有正确的数据。
 	StartupReorderBuffer();
 
 	/*
 	 * Startup CLOG. This must be done after TransamVariables->nextXid has
 	 * been initialized and before we accept connections or begin WAL replay.
 	 */
+	// 启动堵塞。
+	// 这必须在 TransamVariables->nextXid 初始化之后、我们接受连接或开始 WAL 重放之前完成.
 	StartupCLOG();
 
 	/*
@@ -5622,6 +5641,7 @@ StartupXLOG(void)
 
 	/*
 	 * Recover knowledge about replay progress of known replication partners.
+	 * 恢复有关已知复制伙伴的重播进度的知识。
 	 */
 	StartupReplicationOrigin();
 
@@ -5649,6 +5669,7 @@ StartupXLOG(void)
 	 * are small, so it's better to copy them unnecessarily than not copy them
 	 * and regret later.
 	 */
+	// 复制现在到恢复之间的所有丢失的时间线历史文件
 	restoreTimeLineHistoryFiles(checkPoint.ThisTimeLineID, recoveryTargetTLI);
 
 	/*
@@ -5659,6 +5680,7 @@ StartupXLOG(void)
 	 * replay.  This avoids as well any subsequent scans when doing recovery
 	 * of the on-disk two-phase data.
 	 */
+	// 恢复二阶段提交数据
 	restoreTwoPhaseData();
 
 	/*
@@ -5686,6 +5708,7 @@ StartupXLOG(void)
 	if (InRecovery)
 	{
 		/* Initialize state for RecoveryInProgress() */
+		/* 初始化 RecoveryInProgress() 状态 */
 		SpinLockAcquire(&XLogCtl->info_lck);
 		if (InArchiveRecovery)
 			XLogCtl->SharedRecoveryState = RECOVERY_STATE_ARCHIVE;
@@ -5701,6 +5724,7 @@ StartupXLOG(void)
 		 *
 		 * No need to hold ControlFileLock yet, we aren't up far enough.
 		 */
+		// 更新控制文件
 		UpdateControlFile();
 
 		/*
@@ -5837,6 +5861,7 @@ StartupXLOG(void)
 		/*
 		 * We're all set for replaying the WAL now. Do it.
 		 */
+		// 开始执行 wal 恢复
 		PerformWalRecovery();
 		performedWalRecovery = true;
 	}
@@ -5846,6 +5871,7 @@ StartupXLOG(void)
 	/*
 	 * Finish WAL recovery.
 	 */
+	// 结束 wal 恢复
 	endOfRecoveryInfo = FinishWalRecovery();
 	EndOfLog = endOfRecoveryInfo->endOfLog;
 	EndOfLogTLI = endOfRecoveryInfo->endOfLogTLI;
@@ -5856,6 +5882,7 @@ StartupXLOG(void)
 	 * Reset ps status display, so as no information related to recovery shows
 	 * up.
 	 */
+	// 重置 ps 状态显示，以便不显示与恢复相关的信息。
 	set_ps_display("");
 
 	/*
@@ -5889,11 +5916,14 @@ StartupXLOG(void)
 		if (ArchiveRecoveryRequested || ControlFile->backupEndRequired)
 		{
 			if (!XLogRecPtrIsInvalid(ControlFile->backupStartPoint) || ControlFile->backupEndRequired)
+				// WAL 在在线备份结束之前结束
+				// 进行在线备份时生成的所有 WAL 必须在恢复时可用。
 				ereport(FATAL,
 						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 						 errmsg("WAL ends before end of online backup"),
 						 errhint("All WAL generated while online backup was taken must be available at recovery.")));
 			else
+				// WAL 在一致恢复点之前结束
 				ereport(FATAL,
 						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 						 errmsg("WAL ends before consistent recovery point")));
@@ -6057,11 +6087,13 @@ StartupXLOG(void)
 
 	/*
 	 * Preallocate additional log files, if wanted.
+	 * 如果需要的话，预分配额外的日志文件。
 	 */
 	PreallocXlogFiles(EndOfLog, newTLI);
 
 	/*
 	 * Okay, we're officially UP.
+	 * 好的，我们正式上线了。
 	 */
 	InRecovery = false;
 
@@ -6084,6 +6116,7 @@ StartupXLOG(void)
 
 	/*
 	 * Perform end of recovery actions for any SLRUs that need it.
+	 * 为任何需要的 SLRU 执行恢复结束操作。
 	 */
 	TrimCLOG();
 	TrimMultiXact();
@@ -6096,9 +6129,11 @@ StartupXLOG(void)
 	RecoverPreparedTransactions();
 
 	/* Shut down xlogreader */
+	/* 关闭xlogreader */
 	ShutdownWalRecovery();
 
 	/* Enable WAL writes for this backend only. */
+	/* 仅为此后端启用 WAL 写入 */
 	LocalSetXLogInsertAllowed();
 
 	/* If necessary, write overwrite-contrecord before doing anything else */
@@ -6118,6 +6153,7 @@ StartupXLOG(void)
 
 	/*
 	 * Emit checkpoint or end-of-recovery record in XLOG, if required.
+	 * 如果需要，在 XLOG 中发出检查点或恢复结束记录。
 	 */
 	if (performedWalRecovery)
 		promoted = PerformRecoveryXLogAction();

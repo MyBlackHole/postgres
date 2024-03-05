@@ -203,6 +203,7 @@ basebackup_progress_estimate_backup_size(void)
 
 /*
  * Advertise that we are waiting for WAL archiving at end-of-backup.
+ * 通告我们正在等待备份结束时的 WAL 归档。
  */
 void
 basebackup_progress_wait_wal_archive(bbsink_state *state)

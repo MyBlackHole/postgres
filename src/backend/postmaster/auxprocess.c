@@ -40,6 +40,12 @@ static void ShutdownAuxiliaryProcess(int code, Datum arg);
  *	 Common initialization code for auxiliary processes, such as the bgwriter,
  *	 walwriter, walreceiver, and the startup process.
  */
+// 辅助进程主进程
+//                                                                          
+// 辅助进程的主要入口点，例如 bgwriter，
+// walwriter、walreceiver、bootstrapper 和共享内存检查器代码。
+//                                                                          
+// 这段代码放在这里只是因为历史原因。
 void
 AuxiliaryProcessMainCommon(void)
 {

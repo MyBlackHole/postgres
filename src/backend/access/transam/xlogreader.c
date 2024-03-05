@@ -325,6 +325,7 @@ DecodedXLogRecord *
 XLogNextRecord(XLogReaderState *state, char **errormsg)
 {
 	/* Release the last record returned by XLogNextRecord(). */
+	/* 释放 XLogNextRecord() 返回的最后一条记录。 */
 	XLogReleasePreviousRecord(state);
 
 	if (state->decode_queue_head == NULL)

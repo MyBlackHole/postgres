@@ -145,6 +145,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
 
 /*
  * The XLog directory and control file (relative to $PGDATA)
+ * XLog目录和控制文件（相对于$PGDATA）
  */
 #define XLOGDIR				"pg_wal"
 #define XLOG_CONTROL_FILE	"global/pg_control"

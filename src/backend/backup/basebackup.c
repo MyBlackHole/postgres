@@ -261,12 +261,14 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 	state.bytes_total_is_valid = false;
 
 	/* we're going to use a BufFile, so we need a ResourceOwner */
+	/* 我们将使用 BufFile，所以我们需要一个 ResourceOwner */
 	Assert(CurrentResourceOwner == NULL);
 	CurrentResourceOwner = ResourceOwnerCreate(NULL, "base backup");
 
 	// 获取是否在系统回复中
 	backup_started_in_recovery = RecoveryInProgress();
 
+	// 初始化备份清单
 	InitializeBackupManifest(&manifest, opt->manifest,
 							 opt->manifest_checksum_type);
 
@@ -336,6 +338,7 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 		bbsink_begin_backup(sink, &state, SINK_BUFFER_LENGTH);
 
 		/* Send off our tablespaces one by one */
+		/* 将我们的表空间一一发送出去 */
 		foreach(lc, state.tablespaces)
 		{
 			tablespaceinfo *ti = (tablespaceinfo *) lfirst(lc);
@@ -368,11 +371,13 @@ perform_base_backup(basebackup_options *opt, bbsink *sink,
 						sendtblspclinks, &manifest, InvalidOid, ib);
 
 				/* ... and pg_control after everything else. */
+				/* ...和 pg_control 之后的一切。 */
 				if (lstat(XLOG_CONTROL_FILE, &statbuf) != 0)
 					ereport(ERROR,
 							(errcode_for_file_access(),
 							 errmsg("could not stat file \"%s\": %m",
 									XLOG_CONTROL_FILE)));
+				// 发送控制文件
 				sendFile(sink, XLOG_CONTROL_FILE, XLOG_CONTROL_FILE, &statbuf,
 						 false, InvalidOid, InvalidOid,
 						 InvalidRelFileNumber, 0, &manifest, 0, NULL, 0);
@@ -1006,7 +1011,8 @@ parse_basebackup_options(List *options, basebackup_options *opt)
  *
  * SendBaseBackup() - 发送完整的基础备份
  *
- * 该函数将像 pg_backup_start() 一样将系统置于备份模式，这样即使我们绕过缓冲区缓存直接从文件系统读取，备份也是一致的
+ * 该函数将像 pg_backup_start() 一样将系统置于备份模式，
+ * 这样即使我们绕过缓冲区缓存直接从文件系统读取，备份也是一致的
  */
 void
 SendBaseBackup(BaseBackupCmd *cmd, IncrementalBackupInfo *ib)
@@ -1408,7 +1414,7 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, de->d_name);
 
 		/* Skip pg_control here to back up it last */
-		/* 这里跳过pg_control，最后备份它 */
+		/* 这里跳过 pg_control，最后备份它 */
 		if (strcmp(pathbuf, "./global/pg_control") == 0)
 			continue;
 

@@ -1,10 +1,10 @@
-./configure CFLAGS='-g -O0' --enable-debug --prefix=/media/black/Data/lib/postgres/zh_master
+./configure CFLAGS='-g -O0' --enable-debug --prefix=/run/media/black/Data/lib/postgres/zh_master
 
 # 编译安装
 make install
 
-export PATH=/media/black/Data/lib/postgres/zh_master/bin:$PATH
-export LD_LIBRARY_PATH=/media/black/Data/lib/postgres/zh_master/lib/:$LD_LIBRARY_PATH
+export PATH=/run/media/black/Data/lib/postgres/zh_master/bin:$PATH
+export LD_LIBRARY_PATH=/run/media/black/Data/lib/postgres/zh_master/lib/:$LD_LIBRARY_PATH
 
 # 初始化数据库
 initdb -d -D Debug/database

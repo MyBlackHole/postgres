@@ -494,12 +494,14 @@ SimpleLruReadPage(SlruCtl ctl, int64 pageno, bool write_ok,
 	Assert(LWLockHeldByMeInMode(banklock, LW_EXCLUSIVE));
 
 	/* Outer loop handles restart if we must wait for someone else's I/O */
+	/* 如果我们必须等待别人的 I/O，则外循环处理重新启动 */
 	for (;;)
 	{
 		int			slotno;
 		bool		ok;
 
 		/* See if page already is in memory; if not, pick victim slot */
+		/* 查看页面是否已在内存中； 如果没有，选择受害者槽 */
 		slotno = SlruSelectLRUPage(ctl, pageno);
 
 		/* Did we find the page in memory? */
@@ -544,6 +546,7 @@ SimpleLruReadPage(SlruCtl ctl, int64 pageno, bool write_ok,
 		LWLockRelease(banklock);
 
 		/* Do the read */
+		/* 进行读取 */
 		ok = SlruPhysicalReadPage(ctl, pageno, slotno);
 
 		/* Set the LSNs for this newly read-in page to zero */
@@ -783,6 +786,7 @@ SimpleLruDoesPhysicalPageExist(SlruCtl ctl, int64 pageno)
  * For now, assume it's not worth keeping a file pointer open across
  * read/write operations.  We could cache one virtual file pointer ...
  */
+// 将（先前存在的）页面物理读入缓冲槽
 static bool
 SlruPhysicalReadPage(SlruCtl ctl, int64 pageno, int slotno)
 {
@@ -1372,6 +1376,7 @@ SimpleLruWriteAll(SlruCtl ctl, bool allow_redirtied)
 		SlruReportIOError(ctl, pageno, InvalidTransactionId);
 
 	/* Ensure that directory entries for new files are on disk. */
+	/* 确保新文件的目录条目位于磁盘上。 */
 	if (ctl->sync_handler != SYNC_HANDLER_NONE)
 		fsync_fname(ctl->Dir, true);
 }

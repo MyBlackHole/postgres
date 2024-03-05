@@ -85,7 +85,7 @@ typedef struct BlockRefTableKey
 #define BLOCKS_PER_CHUNK		(1 << 16)
 // 每个条目的块数
 #define BLOCKS_PER_ENTRY		(BITS_PER_BYTE * sizeof(uint16))
-// 每个大块最大条目数
+// 每个大块最大条目数 (位标记时使用)
 #define MAX_ENTRIES_PER_CHUNK	(BLOCKS_PER_CHUNK / BLOCKS_PER_ENTRY)
 // 每个块的初始条目
 #define INITIAL_ENTRIES_PER_CHUNK	16

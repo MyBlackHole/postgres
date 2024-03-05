@@ -58,9 +58,11 @@ typedef enum
  * ControlLock is used to protect access to the other fields, except
  * latest_page_number, which uses atomics; see comment in slru.c.
  */
+// 共享内存状态
 typedef struct SlruSharedData
 {
 	/* Number of buffers managed by this SLRU structure */
+	/* 该SLRU结构管理的缓冲区数量*/
 	int			num_slots;
 
 	/*
@@ -123,6 +125,8 @@ typedef SlruSharedData *SlruShared;
 /*
  * SlruCtlData is an unshared structure that points to the active information
  * in shared memory.
+ *
+ * SlruCtlData 是一个非共享结构，它指向共享内存中的活动信息。
  */
 typedef struct SlruCtlData
 {
@@ -162,6 +166,9 @@ typedef struct SlruCtlData
 	/*
 	 * Dir is set during SimpleLruInit and does not change thereafter. Since
 	 * it's always the same, it doesn't need to be in shared memory.
+	 *
+	 * Dir 在 SimpleLruInit 期间设置，此后不会更改。
+	 * 由于它始终相同，因此不需要位于共享内存中。
 	 */
 	char		Dir[64];
 

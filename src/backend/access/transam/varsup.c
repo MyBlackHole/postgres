@@ -31,6 +31,7 @@
 #define VAR_OID_PREFETCH		8192
 
 /* pointer to variables struct in shared memory */
+/* 指向共享内存中变量结构体的指针 */
 TransamVariablesData *TransamVariables = NULL;
 
 
@@ -351,6 +352,9 @@ AdvanceNextFullTransactionIdPastXid(TransactionId xid)
  * XactTruncationLock from when it tests oldestClogXid through to when it
  * completes the clog lookup.
  */
+// 提前最旧的有效阻塞条目的集群范围值。
+// 我们必须获取 XactTruncationLock 来推进oldestClogXid。
+// 仅当我们提前限制时，才需要在实际的 clog 截断期间保持锁定，因为查找任意 xids 的代码需要从测试oldestClogXid 到完成 clog 查找时保持 XactTruncationLock。
 void
 AdvanceOldestClogXid(TransactionId oldest_datfrozenxid)
 {

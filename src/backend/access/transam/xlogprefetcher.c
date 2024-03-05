@@ -1048,6 +1048,7 @@ XLogPrefetcherReadRecord(XLogPrefetcher *prefetcher, char **errmsg)
 	}
 
 	/* Read the next record. */
+	// 读取下一条
 	record = XLogNextRecord(prefetcher->reader, errmsg);
 	if (!record)
 		return NULL;

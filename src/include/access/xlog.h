@@ -90,7 +90,9 @@ typedef enum WalCompression
 /* Recovery states */
 typedef enum RecoveryState
 {
+	// 奔溃恢复
 	RECOVERY_STATE_CRASH = 0,	/* crash recovery */
+	// 归档恢复
 	RECOVERY_STATE_ARCHIVE,		/* archive recovery */
 	RECOVERY_STATE_DONE,		/* currently in production */
 } RecoveryState;
@@ -305,9 +307,11 @@ extern SessionBackupState get_backup_status(void);
 /* File path names (all relative to $PGDATA) */
 #define RECOVERY_SIGNAL_FILE	"recovery.signal"
 #define STANDBY_SIGNAL_FILE		"standby.signal"
+// 备份标签
 #define BACKUP_LABEL_FILE		"backup_label"
 #define BACKUP_LABEL_OLD		"backup_label.old"
 
+// 表空间映射
 #define TABLESPACE_MAP			"tablespace_map"
 #define TABLESPACE_MAP_OLD		"tablespace_map.old"
 

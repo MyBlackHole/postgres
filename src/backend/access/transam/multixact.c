@@ -200,12 +200,15 @@ static SlruCtlData MultiXactMemberCtlData;
 typedef struct MultiXactStateData
 {
 	/* next-to-be-assigned MultiXactId */
+	/* 下一个要分配的 MultiXactId */
 	MultiXactId nextMXact;
 
 	/* next-to-be-assigned offset */
+	/* 下一个要分配的偏移量 */
 	MultiXactOffset nextOffset;
 
 	/* Have we completed multixact startup? */
+	/* 我们已经完成 multixact 启动了吗 */
 	bool		finishedStartup;
 
 	/*
@@ -295,6 +298,7 @@ typedef struct MultiXactStateData
 #define MaxOldestSlot	(MaxBackends + max_prepared_xacts)
 
 /* Pointers to the state data in shared memory */
+/* 指向共享内存中状态数据的指针 */
 static MultiXactStateData *MultiXactState;
 static MultiXactId *OldestMemberMXactId;
 static MultiXactId *OldestVisibleMXactId;

@@ -3507,6 +3507,7 @@ looks_like_temp_rel_name(const char *name)
 }
 
 #ifdef HAVE_SYNCFS
+// 同步文件系统
 static void
 do_syncfs(const char *path)
 {

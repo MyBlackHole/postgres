@@ -108,6 +108,7 @@
 
 /*
  * Directory where Two-phase commit files reside within PGDATA
+ * PGDATA 中两阶段提交文件所在的目录
  */
 #define TWOPHASE_DIR "pg_twophase"
 
@@ -1893,6 +1894,8 @@ CheckPointTwoPhase(XLogRecPtr redo_horizon)
  * This is called once at the beginning of recovery, saving any extra
  * lookups in the future.  Two-phase files that are newer than the
  * minimum XID horizon are discarded on the way.
+ *
+ * 恢复二阶段数据
  */
 void
 restoreTwoPhaseData(void)
