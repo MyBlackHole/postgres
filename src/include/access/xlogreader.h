@@ -122,6 +122,7 @@ typedef struct
 	bool		in_use;
 
 	/* Identify the block this refers to */
+	/* 识别该块，该块是指 */
 	RelFileLocator rlocator;
 	ForkNumber	forknum;
 	BlockNumber blkno;
@@ -142,6 +143,7 @@ typedef struct
 	uint8		bimg_info;
 
 	/* Buffer holding the rmgr-specific data associated with this block */
+	/* 持有与此块关联的RMGR特异性数据 */
 	bool		has_data;
 	char	   *data;
 	uint16		data_len;
@@ -153,6 +155,9 @@ typedef struct
  * memory, with main_data and blocks[n].data pointing to memory after the
  * members declared here.
  */
+// 记录的解码内容。
+// 这占据了一个连续的内存区域，
+// 其中 main_data 和 blocks[n].Data 指向成员在此处声明之后。
 typedef struct DecodedXLogRecord
 {
 	/* Private member used for resource management. */
@@ -236,6 +241,7 @@ struct XLogReaderState
 	XLogRecPtr	PrevRecPtr;		/* start of previous record decoded */
 
 	/* Last record returned by XLogReadRecord(). */
+	/*由 XlogreadRecord() 返回的最后记录。 */
 	DecodedXLogRecord *record;
 
 	/* ----------------------------------------

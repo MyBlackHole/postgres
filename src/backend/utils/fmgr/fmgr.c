@@ -71,7 +71,8 @@ extern Datum fmgr_security_definer(PG_FUNCTION_ARGS);
  * Lookup routines for builtin-function table.  We can search by either Oid
  * or name, but search by Oid is much faster.
  */
-
+// 内置功能表的查找例程。 
+// 我们可以通过OID或名称进行搜索，但是OID搜索的速度要快得多。
 static const FmgrBuiltin *
 fmgr_isbuiltin(Oid id)
 {
@@ -97,6 +98,8 @@ fmgr_isbuiltin(Oid id)
  * the array with the same name, but they should all point to the same
  * routine.
  */
+// 查找一个内置的名称。 
+// 请注意，数组中可以有一个以上的条目，其名称相同，但它们都应指向同一例程。
 static const FmgrBuiltin *
 fmgr_lookupByName(const char *name)
 {
@@ -143,6 +146,8 @@ fmgr_info_cxt(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt)
  * This one does the actual work.  ignore_security is ordinarily false
  * but is set to true when we need to avoid recursion.
  */
+// 这是一个实际的工作。
+// ignore_security通常是错误的，但是当我们需要避免递归时，设置为真。
 static void
 fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 					   bool ignore_security)
@@ -237,6 +242,7 @@ fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 								prosrc)));
 			pfree(prosrc);
 			/* Should we check that nargs, strict, retset match the table? */
+			/*我们是否应该检查严格的nargs是否与表与表匹配？ */
 			finfo->fn_addr = fbp->func;
 			/* note this policy is also assumed in fast path above */
 			finfo->fn_stats = TRACK_FUNC_ALL;	/* ie, never track */

@@ -371,9 +371,11 @@ WalSummarizerMain(char *startup_data, size_t startup_data_len)
 		MemoryContextReset(context);
 
 		/* Process any signals received recently. */
+		/* 处理最近收到的任何信号。 */
 		HandleWalSummarizerInterrupts();
 
 		/* If it's time to remove any old WAL summaries, do that now. */
+		/* 如果需要删除任何旧的 WAL 摘要，请立即执行此操作。 */
 		MaybeRemoveOldWalSummaries();
 
 		/* Find the LSN and TLI up to which we can safely summarize. */
@@ -445,6 +447,7 @@ WalSummarizerMain(char *startup_data, size_t startup_data_len)
 		LWLockRelease(WALSummarizerLock);
 
 		/* Wake up anyone waiting for more summary files to be written. */
+		/* 唤醒等待写入更多摘要文件的任何人。 */
 		ConditionVariableBroadcast(&WalSummarizerCtl->summary_file_cv);
 	}
 }

@@ -219,7 +219,7 @@ current_query(PG_FUNCTION_ARGS)
 }
 
 /* Function to find out which databases make use of a tablespace */
-
+/* 功能以找出哪些数据库使用表空间 */
 Datum
 pg_tablespace_databases(PG_FUNCTION_ARGS)
 {
@@ -297,6 +297,7 @@ pg_tablespace_databases(PG_FUNCTION_ARGS)
 /*
  * pg_tablespace_location - get location for a tablespace
  */
+// pg_tablespace_location-获取表空间的位置
 Datum
 pg_tablespace_location(PG_FUNCTION_ARGS)
 {
@@ -317,6 +318,7 @@ pg_tablespace_location(PG_FUNCTION_ARGS)
 	/*
 	 * Return empty string for the cluster's default tablespaces
 	 */
+	// 返回集群的默认表空间的空字符串
 	if (tablespaceOid == DEFAULTTABLESPACE_OID ||
 		tablespaceOid == GLOBALTABLESPACE_OID)
 		PG_RETURN_TEXT_P(cstring_to_text(""));

@@ -225,6 +225,7 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 				mystreamer->filename[fnamelen - 1] = '\0';
 
 			/* Dispatch based on file type. */
+			/* 根据文件类型进行调度。 */
 			if (member->is_directory)
 				extract_directory(mystreamer->filename, member->mode);
 			else if (member->is_link)
@@ -288,6 +289,7 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
  * If in-place tablespaces are used, pg_tblspc and subdirectories may already
  * exist when we get here. So tolerate that case, too.
  */
+// 我们应该容忍已经存在的目录吗?
 static bool
 should_allow_existing_directory(const char *pathname)
 {
@@ -313,15 +315,18 @@ should_allow_existing_directory(const char *pathname)
 /*
  * Create a directory.
  */
+// 创建目录
 static void
 extract_directory(const char *filename, mode_t mode)
 {
+	// 创建目录
 	if (mkdir(filename, pg_dir_create_mode) != 0 &&
 		(errno != EEXIST || !should_allow_existing_directory(filename)))
 		pg_fatal("could not create directory \"%s\": %m",
 				 filename);
 
 #ifndef WIN32
+	// 修改权限
 	if (chmod(filename, mode))
 		pg_fatal("could not set permissions on directory \"%s\": %m",
 				 filename);

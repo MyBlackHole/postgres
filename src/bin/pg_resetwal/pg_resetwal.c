@@ -1039,6 +1039,7 @@ KillExistingArchiveStatus(void)
 /*
  * Remove existing WAL summary files
  */
+// 删除现有的WAL摘要文件
 static void
 KillExistingWALSummaries(void)
 {
