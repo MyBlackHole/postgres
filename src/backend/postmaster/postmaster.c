@@ -494,8 +494,10 @@ PostmasterMain(int argc, char *argv[])
 	bool		listen_addr_saved = false;
 	char	   *output_config_variable = NULL;
 
+	// 初始化全局变量
 	InitProcessGlobals();
 
+	// 设置 master pid
 	PostmasterPid = MyProcPid;
 
 	IsPostmasterEnvironment = true;
@@ -522,6 +524,8 @@ PostmasterMain(int argc, char *argv[])
 	 * the PostmasterContext, which is space that can be recycled by backends.
 	 * Allocated data that needs to be available to backends should be
 	 * allocated in TopMemoryContext.
+	 *
+	 * 创建分配 master 上下文
 	 */
 	PostmasterContext = AllocSetContextCreate(TopMemoryContext,
 											  "Postmaster",
@@ -529,6 +533,7 @@ PostmasterMain(int argc, char *argv[])
 	MemoryContextSwitchTo(PostmasterContext);
 
 	/* Initialize paths to installation files */
+	// 获取实例执行路径
 	getInstallationPaths(argv[0]);
 
 	/*
@@ -539,6 +544,8 @@ PostmasterMain(int argc, char *argv[])
 	 * bootstrap/bootstrap.c, postmaster/bgwriter.c, postmaster/walwriter.c,
 	 * postmaster/autovacuum.c, postmaster/pgarch.c, postmaster/syslogger.c,
 	 * postmaster/bgworker.c and postmaster/checkpointer.c.
+	 *
+	 * 信号处理
 	 */
 	pqinitmask();
 	sigprocmask(SIG_SETMASK, &BlockSig, NULL);
@@ -554,6 +561,7 @@ PostmasterMain(int argc, char *argv[])
 	pqsignal(SIGCHLD, handle_pm_child_exit_signal);
 
 	/* This may configure SIGURG, depending on platform. */
+	// 初始化信号事件文件描述符
 	InitializeLatchSupport();
 	InitProcessLocalLatch();
 
@@ -809,12 +817,15 @@ PostmasterMain(int argc, char *argv[])
 	}
 
 	/* Verify that DataDir looks reasonable */
+	// 验证数据目录
 	checkDataDir();
 
 	/* Check that pg_control exists */
+	// 验证控制文件
 	checkControlFile();
 
 	/* And switch working directory into it */
+	// 修改工作目录
 	ChangeToDataDir();
 
 	/*
@@ -887,6 +898,8 @@ PostmasterMain(int argc, char *argv[])
 	 * is responsible for removing both data directory and socket lockfiles;
 	 * so it must happen before opening sockets so that at exit, the socket
 	 * lockfiles go away after CloseServerPorts runs.
+	 *
+	 * 创建数据目录锁文件
 	 */
 	CreateDataDirLockFile(true);
 
@@ -927,11 +940,13 @@ PostmasterMain(int argc, char *argv[])
 	 * Now that loadable modules have had their chance to alter any GUCs,
 	 * calculate MaxBackends.
 	 */
+	// 初始化最大后端数量
 	InitializeMaxBackends();
 
 	/*
 	 * Give preloaded libraries a chance to request additional shared memory.
 	 */
+	// 给请求预分配共享内存
 	process_shmem_requests();
 
 	/*
@@ -1369,6 +1384,7 @@ PostmasterMain(int argc, char *argv[])
 	/* Some workers may be scheduled to start now */
 	maybe_start_bgworkers();
 
+	// 进入无尽的轮回
 	status = ServerLoop();
 
 	/*
@@ -1619,6 +1635,8 @@ ConfigurePostmasterWaitSet(bool accept_connections)
 
 /*
  * Main idle loop of postmaster
+ *
+ * 主空闲循环
  */
 static int
 ServerLoop(void)
@@ -1635,6 +1653,7 @@ ServerLoop(void)
 	{
 		time_t		now;
 
+		// 获取发生事件的 fd
 		nevents = WaitEventSetWait(pm_wait_set,
 								   DetermineSleepTime(),
 								   events,
@@ -1671,6 +1690,7 @@ ServerLoop(void)
 				ClientSocket s;
 
 				if (AcceptConnection(events[i].fd, &s) == STATUS_OK)
+					// 消费阶段
 					BackendStartup(&s);
 
 				/* We no longer need the open socket in this process */
@@ -2031,8 +2051,11 @@ ClosePostmasterPorts(bool am_syslogger)
 void
 InitProcessGlobals(void)
 {
+	// 设置进程 pid
 	MyProcPid = getpid();
+	// 设置开始事件戳
 	MyStartTimestamp = GetCurrentTimestamp();
+	// 设置 pg time
 	MyStartTime = timestamptz_to_time_t(MyStartTimestamp);
 
 	/*

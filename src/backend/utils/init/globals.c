@@ -64,6 +64,11 @@ struct Latch *MyLatch;
  * Except during early startup, this is also the server's working directory;
  * most code therefore can simply use relative paths and not reference DataDir
  * explicitly.
+ *
+ * DataDir 是 PGDATA 目录树顶层的绝对路径。
+ * 除了在早期启动期间，这也是服务器的工作目录;
+ * 因此，大多数代码可以简单地使用相对路径，而不引用 DataDir
+ * 明确地。
  */
 char	   *DataDir = NULL;
 

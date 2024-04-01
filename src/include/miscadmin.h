@@ -342,6 +342,7 @@ typedef enum BackendType
 	B_WAL_SENDER,
 	B_SLOTSYNC_WORKER,
 
+	// 独立后端
 	B_STANDALONE_BACKEND,
 
 	/*

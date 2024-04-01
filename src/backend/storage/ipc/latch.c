@@ -101,9 +101,12 @@
 /* typedef in latch.h */
 struct WaitEventSet
 {
+	// 所有者
 	ResourceOwner owner;
 
+	// 注册事件数量
 	int			nevents;		/* number of registered events */
+	// 此集合最大事件数
 	int			nevents_space;	/* maximum number of events in this set */
 
 	/*
@@ -131,6 +134,7 @@ struct WaitEventSet
 #if defined(WAIT_USE_EPOLL)
 	int			epoll_fd;
 	/* epoll_wait returns events in a user provided arrays, allocate once */
+	/* epoll_wait返回用户提供的数组中的事件，分配一次 */
 	struct epoll_event *epoll_ret_events;
 #elif defined(WAIT_USE_KQUEUE)
 	int			kqueue_fd;
@@ -152,6 +156,7 @@ struct WaitEventSet
 };
 
 /* A common WaitEventSet used to implement WaitLatch() */
+/* 用于实现 WaitLatch（） 的通用 WaitEventSet */
 static WaitEventSet *LatchWaitSet;
 
 /* The position of the latch in LatchWaitSet. */
@@ -164,6 +169,7 @@ static volatile sig_atomic_t waiting = false;
 
 #ifdef WAIT_USE_SIGNALFD
 /* On Linux, we'll receive SIGURG via a signalfd file descriptor. */
+// 在 linux 上通过接收 signalfd 文件描述符接收信号
 static int	signal_fd = -1;
 #endif
 
@@ -227,6 +233,11 @@ ResourceOwnerForgetWaitEventSet(ResourceOwner owner, WaitEventSet *set)
  *
  * This must be called once during startup of any process that can wait on
  * latches, before it issues any InitLatch() or OwnLatch() calls.
+ *
+ * 初始化进程本地闩锁基础结构。
+ * 
+ * 这必须在启动任何可以等待的进程期间调用一次
+ * 闩锁，在发出任何 InitLatch（） 或 OwnLatch（） 调用之前。
  */
 void
 InitializeLatchSupport(void)
@@ -330,6 +341,7 @@ InitializeLatchSupport(void)
 	/* Set up the signalfd to receive SIGURG notifications. */
 	sigemptyset(&signalfd_mask);
 	sigaddset(&signalfd_mask, SIGURG);
+	// 初始信号文件描述符
 	signal_fd = signalfd(-1, &signalfd_mask, SFD_NONBLOCK | SFD_CLOEXEC);
 	if (signal_fd < 0)
 		elog(FATAL, "signalfd() failed");
@@ -389,6 +401,8 @@ ShutdownLatchSupport(void)
 
 /*
  * Initialize a process-local latch.
+ *
+ * 初始化本地进程锁存器
  */
 void
 InitLatch(Latch *latch)

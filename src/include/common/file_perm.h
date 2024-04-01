@@ -25,6 +25,8 @@
 
 /*
  * Mode mask for data directory permissions that also allows group read/execute.
+ *
+ * 用户读写执行, 组写
  */
 #define PG_MODE_MASK_GROUP			(S_IWGRP | S_IRWXO)
 

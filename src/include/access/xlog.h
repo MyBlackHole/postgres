@@ -58,8 +58,10 @@ extern PGDLLIMPORT int wal_decode_buffer_size;
 extern PGDLLIMPORT int CheckPointSegments;
 
 /* Archive modes */
+// 归档模式
 typedef enum ArchiveMode
 {
+	// 不启用
 	ARCHIVE_MODE_OFF = 0,		/* disabled */
 	ARCHIVE_MODE_ON,			/* enabled while server is running normally */
 	ARCHIVE_MODE_ALWAYS,		/* enabled always (even during recovery) */
@@ -67,6 +69,7 @@ typedef enum ArchiveMode
 extern PGDLLIMPORT int XLogArchiveMode;
 
 /* WAL levels */
+// 预写等级
 typedef enum WalLevel
 {
 	WAL_LEVEL_MINIMAL = 0,

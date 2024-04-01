@@ -56,6 +56,7 @@
 #include "utils/varlena.h"
 
 
+// 目录锁文件
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
 
 ProcessingMode Mode = InitProcessing;
@@ -194,6 +195,8 @@ InitStandaloneProcess(const char *argv0)
 	InitProcessGlobals();
 
 	/* Initialize process-local latch support */
+	// // 初始化进程本地闩锁支持
+	// 初始化信号文件描述符
 	InitializeLatchSupport();
 	InitProcessLocalLatch();
 	InitializeLatchWaitSet();
@@ -360,6 +363,7 @@ checkDataDir(void)
 
 	/* eventual chdir would fail anyway, but let's test ... */
 	if (!S_ISDIR(stat_buf.st_mode))
+		// 不是目录报错
 		ereport(FATAL,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("specified data directory \"%s\" is not a directory",
@@ -375,6 +379,7 @@ checkDataDir(void)
 	 * XXX can we safely enable this check on Windows?
 	 */
 #if !defined(WIN32) && !defined(__CYGWIN__)
+	// 检查目录持有用户是否等于进程有效用户
 	if (stat_buf.st_uid != geteuid())
 		ereport(FATAL,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
@@ -395,6 +400,7 @@ checkDataDir(void)
 	 * reasonable check to apply on Windows.
 	 */
 #if !defined(WIN32) && !defined(__CYGWIN__)
+	// 目录权限校验
 	if (stat_buf.st_mode & PG_MODE_MASK_GROUP)
 		ereport(FATAL,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
@@ -455,6 +461,7 @@ ChangeToDataDir(void)
 {
 	Assert(DataDir);
 
+	// 修改工作目录
 	if (chdir(DataDir) < 0)
 		ereport(FATAL,
 				(errcode_for_file_access(),

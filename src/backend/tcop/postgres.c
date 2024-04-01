@@ -4037,6 +4037,8 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
  * Performs single user specific setup then calls PostgresMain() to actually
  * process queries. Single user mode specific setup should go here, rather
  * than PostgresMain() or InitPostgres() when reasonably possible.
+ *
+ * 单用户模式
  */
 void
 PostgresSingleUserMain(int argc, char *argv[],
@@ -4047,10 +4049,13 @@ PostgresSingleUserMain(int argc, char *argv[],
 	Assert(!IsUnderPostmaster);
 
 	/* Initialize startup process environment. */
+	// 初始化进程环境
 	InitStandaloneProcess(argv[0]);
 
 	/*
 	 * Set default values for command-line options.
+	 *
+	 * 设置命令行选项的默认值。
 	 */
 	InitializeGUCOptions();
 
@@ -4078,7 +4083,9 @@ PostgresSingleUserMain(int argc, char *argv[],
 	 * Validate we have been given a reasonable-looking DataDir and change
 	 * into it.
 	 */
+	// 检查目录
 	checkDataDir();
+	// 修改工具目录
 	ChangeToDataDir();
 
 	/*
@@ -4147,6 +4154,15 @@ PostgresSingleUserMain(int argc, char *argv[],
  * NB: Single user mode specific setup should go to PostgresSingleUserMain()
  * if reasonably possible.
  * ----------------------------------------------------------------
+ *
+ * Postgres主
+ *     Postgres 主循环 -- 所有后端，交互或以其他方式循环
+ *                                                                            
+ * dbname 是要连接到的数据库的名称，username 是
+ * 要用于会话的 PostgreSQL 用户名。
+ *                                                                            
+ * 注意：特定于单用户模式的设置应转到 PostgresSingleUserMain（）
+ * 如果合理可能。
  */
 void
 PostgresMain(const char *dbname, const char *username)
@@ -4233,6 +4249,8 @@ PostgresMain(const char *dbname, const char *username)
 	 * involves database access should be there, not here.
 	 *
 	 * Honor session_preload_libraries if not dealing with a WAL sender.
+	 *
+	 * 通用初始化
 	 */
 	InitPostgres(dbname, InvalidOid,	/* database to connect to */
 				 username, InvalidOid,	/* role to connect as */
@@ -4419,6 +4437,7 @@ PostgresMain(const char *dbname, const char *username)
 		 * next time.
 		 */
 		MemoryContextSwitchTo(TopMemoryContext);
+		// 重置异常上下文
 		FlushErrorState();
 
 		/*
@@ -4608,6 +4627,8 @@ PostgresMain(const char *dbname, const char *username)
 
 		/*
 		 * (3) read a command (loop blocks here)
+		 *
+		 * 读取命令
 		 */
 		firstchar = ReadCommand(&input_message);
 
