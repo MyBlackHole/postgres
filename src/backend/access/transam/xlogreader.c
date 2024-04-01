@@ -321,11 +321,12 @@ XLogReleasePreviousRecord(XLogReaderState *state)
  * The returned record (or *errormsg) points to an internal buffer that's
  * valid until the next call to XLogNextRecord.
  */
+// 获取下一条记录
 DecodedXLogRecord *
 XLogNextRecord(XLogReaderState *state, char **errormsg)
 {
 	/* Release the last record returned by XLogNextRecord(). */
-	/* 释放 XLogNextRecord() 返回的最后一条记录。 */
+    /*发布 Xlognextrecord() 返回的下一个记录。 */
 	XLogReleasePreviousRecord(state);
 
 	if (state->decode_queue_head == NULL)
@@ -386,6 +387,7 @@ XLogNextRecord(XLogReaderState *state, char **errormsg)
  * The returned pointer (or *errormsg) points to an internal buffer that's
  * valid until the next call to XLogReadRecord.
  */
+// 尝试阅读Xlog记录。
 XLogRecord *
 XLogReadRecord(XLogReaderState *state, char **errormsg)
 {
@@ -405,6 +407,7 @@ XLogReadRecord(XLogReaderState *state, char **errormsg)
 		XLogReadAhead(state, false /* nonblocking */ );
 
 	/* Consume the head record or error. */
+    /*消耗头部记录或错误。 */
 	decoded = XLogNextRecord(state, errormsg);
 	if (decoded)
 	{
@@ -525,6 +528,7 @@ XLogReadRecordAlloc(XLogReaderState *state, size_t xl_tot_len, bool allow_oversi
 	return NULL;
 }
 
+// 解码下一条记录
 static XLogPageReadResult
 XLogDecodeNextRecord(XLogReaderState *state, bool nonblocking)
 {

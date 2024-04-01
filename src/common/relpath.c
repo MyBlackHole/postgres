@@ -141,6 +141,7 @@ GetDatabasePath(Oid dbOid, Oid spcOid)
  * relpath.h would have to include a backend-only header to do that; doesn't
  * seem worth the trouble considering ProcNumber is just int anyway.
  */
+// 构造关系文件的路径
 char *
 GetRelationPath(Oid dbOid, Oid spcOid, RelFileNumber relNumber,
 				int procNumber, ForkNumber forkNumber)
