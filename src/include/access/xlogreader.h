@@ -173,6 +173,7 @@ typedef struct DecodedXLogRecord
 	TransactionId toplevel_xid; /* XID of top-level transaction */
 	char	   *main_data;		/* record's main data portion */
 	uint32		main_data_len;	/* main data portion's length */
+	// 使用中的最高block_id（如果没有则为-1）
 	int			max_block_id;	/* highest block_id in use (-1 if none) */
 	DecodedBkpBlock blocks[FLEXIBLE_ARRAY_MEMBER];
 } DecodedXLogRecord;

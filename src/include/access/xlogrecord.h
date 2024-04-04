@@ -19,6 +19,7 @@
 
 /*
  * The overall layout of an XLOG record is:
+ * XLOG记录的总体布局是：
  *		Fixed-size header (XLogRecord struct)
  *		XLogRecordBlockHeader struct
  *		XLogRecordBlockHeader struct
@@ -37,6 +38,12 @@
  * The XLogRecordBlockHeader, XLogRecordDataHeaderShort and
  * XLogRecordDataHeaderLong structs all begin with a single 'id' byte. It's
  * used to distinguish between block references, and the main data structs.
+ *
+ * 可以有零个或多个 XLogRecordBlockHeader，以及 0 个或多个不与块关联的 rmgr 特定数据字节。
+ * XLogRecord 结构始终从 WAL 文件中的 MAXALIGN 边界开始，但其余字段未对齐。
+ *
+ * XLogRecordBlockHeader、XLogRecordDataHeaderShort 和 XLogRecordDataHeaderLong 结构均以单个“id”字节开头。 
+ * 它用于区分块引用和主要数据结构。
  */
 typedef struct XLogRecord
 {
@@ -50,11 +57,14 @@ typedef struct XLogRecord
 	uint8		xl_info;		/* flag bits, see below */
 	// 该记录的资源管理器
 	RmgrId		xl_rmid;		/* resource manager for this record */
+
 	/* 2 bytes of padding here, initialize to zero */
 	/* 这里填充2个字节，初始化为零*/
+
 	pg_crc32c	xl_crc;			/* CRC for this record */
 
 	/* XLogRecordBlockHeaders and XLogRecordDataHeader follow, no padding */
+	/* XLogRecordBlockHeaders 和 XLogRecordDataHeader 跟随，无填充 */
 
 } XLogRecord;
 
@@ -106,10 +116,14 @@ typedef struct XLogRecord
  * Note that we don't attempt to align the XLogRecordBlockHeader struct!
  * So, the struct must be copied to aligned local storage before use.
  */
+// 附加到 XLOG 记录的块数据的标头信息。
 typedef struct XLogRecordBlockHeader
 {
+	/* 块引用 ID */
 	uint8		id;				/* block reference ID */
+	/* 关系内的分叉和标志 */
 	uint8		fork_flags;		/* fork within the relation, and flags */
+	/* 有效负载字节数（不包括页面图像）*/
 	uint16		data_length;	/* number of payload bytes (not including page
 								 * image) */
 
@@ -144,10 +158,14 @@ typedef struct XLogRecordBlockHeader
  * compressed, the amount of block data actually present is less than
  * BLCKSZ - the length of "hole" bytes - the length of extra information.
  */
+// 包含整页图像时的附加标题信息
 typedef struct XLogRecordBlockImageHeader
 {
+	/* 页面图像字节数 */
 	uint16		length;			/* number of page image bytes */
+	/* “hole” 之前的字节数 */
 	uint16		hole_offset;	/* number of bytes before "hole" */
+	/* 标志位，见下文 */
 	uint8		bimg_info;		/* flag bits, see below */
 
 	/*
@@ -160,22 +178,35 @@ typedef struct XLogRecordBlockImageHeader
 	(offsetof(XLogRecordBlockImageHeader, bimg_info) + sizeof(uint8))
 
 /* Information stored in bimg_info */
+/* bimg_info中存储的信息 */
+
+/* 页面图像有“洞” */
 #define BKPIMAGE_HAS_HOLE		0x01	/* page image has "hole" */
+/* 重播期间应恢复页面图像 */
 #define BKPIMAGE_APPLY			0x02	/* page image should be restored
 										 * during replay */
 /* compression methods supported */
+/* 支持的压缩方法 */
 #define BKPIMAGE_COMPRESS_PGLZ	0x04
 #define BKPIMAGE_COMPRESS_LZ4	0x08
 #define BKPIMAGE_COMPRESS_ZSTD	0x10
 
+// TODO BlackHole
+#if PG_VERSION_NUM >= 130000
 #define	BKPIMAGE_COMPRESSED(info) \
 	((info & (BKPIMAGE_COMPRESS_PGLZ | BKPIMAGE_COMPRESS_LZ4 | \
 			  BKPIMAGE_COMPRESS_ZSTD)) != 0)
+#else
+#define BKPIMAGE_IS_COMPRESSED		0x02	/* page image is compressed */
+#define	BKPIMAGE_COMPRESSED(info) \
+	(info & BKPIMAGE_IS_COMPRESSED)
+#endif
 
 /*
  * Extra header information used when page image has "hole" and
  * is compressed.
  */
+// 当页面图像有“洞”并被压缩时使用额外的标头信息。
 typedef struct XLogRecordBlockCompressHeader
 {
 	uint16		hole_length;	/* number of bytes in "hole" */
@@ -188,6 +219,8 @@ typedef struct XLogRecordBlockCompressHeader
  * Maximum size of the header for a block reference. This is used to size a
  * temporary buffer for constructing the header.
  */
+// 块引用的标头的最大大小。 
+// 这用于确定用于构建标头的临时缓冲区的大小。
 #define MaxSizeOfXLogRecordBlockHeader \
 	(SizeOfXLogRecordBlockHeader + \
 	 SizeOfXLogRecordBlockImageHeader + \
@@ -199,11 +232,15 @@ typedef struct XLogRecordBlockCompressHeader
  * The fork number fits in the lower 4 bits in the fork_flags field. The upper
  * bits are used for flags.
  */
+// 分叉号位于 fork_flags 字段的低 4 位中。 高位用于标志。
 #define BKPBLOCK_FORK_MASK	0x0F
 #define BKPBLOCK_FLAG_MASK	0xF0
+/* 块数据是一个 XLogRecordBlockImage */
 #define BKPBLOCK_HAS_IMAGE	0x10	/* block data is an XLogRecordBlockImage */
 #define BKPBLOCK_HAS_DATA	0x20
+/* redo 将重新初始化页面 */
 #define BKPBLOCK_WILL_INIT	0x40	/* redo will re-init the page */
+// RelFileLocator 省略，同上一条 xlog record
 #define BKPBLOCK_SAME_REL	0x80	/* RelFileLocator omitted, same as
 									 * previous */
 

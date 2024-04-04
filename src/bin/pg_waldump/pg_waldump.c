@@ -239,6 +239,7 @@ search_directory(const char *directory, const char *fname)
 	}
 
 	/* set WalSegSz if file is successfully opened */
+	/* 如果文件成功打开则设置 WalSegSz */
 	if (fd >= 0)
 	{
 		PGAlignedXLogBlock buf;
@@ -1211,6 +1212,7 @@ main(int argc, char **argv)
 		pg_fatal("out of memory while allocating a WAL reading processor");
 
 	/* first find a valid recptr to start from */
+	/* 首先找到一个有效的recptr开始 */
 	first_record = XLogFindNextRecord(xlogreader_state, private.startptr);
 
 	if (first_record == InvalidXLogRecPtr)

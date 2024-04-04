@@ -235,6 +235,7 @@ XLogBeginRead(XLogReaderState *state, XLogRecPtr RecPtr)
 	ResetDecoder(state);
 
 	/* Begin at the passed-in record pointer. */
+    /* 从传入的记录指针开始。 */
 	state->EndRecPtr = RecPtr;
 	state->NextRecPtr = RecPtr;
 	state->ReadRecPtr = InvalidXLogRecPtr;
@@ -1238,20 +1239,20 @@ XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
 	XLByteToSeg(recptr, segno, state->segcxt.ws_segsize);
 	offset = XLogSegmentOffset(recptr, state->segcxt.ws_segsize);
 
-	if (hdr->xlp_magic != XLOG_PAGE_MAGIC)
-	{
-		char		fname[MAXFNAMELEN];
+	// if (hdr->xlp_magic != XLOG_PAGE_MAGIC)
+	// {
+	// 	char		fname[MAXFNAMELEN];
 
-		XLogFileName(fname, state->seg.ws_tli, segno, state->segcxt.ws_segsize);
+	// 	XLogFileName(fname, state->seg.ws_tli, segno, state->segcxt.ws_segsize);
 
-		report_invalid_record(state,
-							  "invalid magic number %04X in WAL segment %s, LSN %X/%X, offset %u",
-							  hdr->xlp_magic,
-							  fname,
-							  LSN_FORMAT_ARGS(recptr),
-							  offset);
-		return false;
-	}
+	// 	report_invalid_record(state,
+	// 						  "invalid magic number %04X in WAL segment %s, LSN %X/%X, offset %u",
+	// 						  hdr->xlp_magic,
+	// 						  fname,
+	// 						  LSN_FORMAT_ARGS(recptr),
+	// 						  offset);
+	// 	return false;
+	// }
 
 	if ((hdr->xlp_info & ~XLP_ALL_FLAGS) != 0)
 	{
@@ -1287,7 +1288,7 @@ XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
 								  "WAL file is from different database system: incorrect segment size in page header");
 			return false;
 		}
-		else if (longhdr->xlp_xlog_blcksz != XLOG_BLCKSZ)
+		else if (!(longhdr->xlp_xlog_blcksz == XLOG_BLCKSZ || longhdr->xlp_xlog_blcksz == 65536))
 		{
 			report_invalid_record(state,
 								  "WAL file is from different database system: incorrect XLOG_BLCKSZ in page header");
@@ -1384,6 +1385,7 @@ XLogReaderResetError(XLogReaderState *state)
  * This positions the reader, like XLogBeginRead(), so that the next call to
  * XLogReadRecord() will read the next valid record.
  */
+// 查找 lsn >= RecPtr 的第一条记录。
 XLogRecPtr
 XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 {
@@ -1424,6 +1426,7 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 		targetPagePtr = tmpRecPtr - targetRecOff;
 
 		/* Read the page containing the record */
+		/* 读取包含该记录的页面 */
 		readLen = ReadPageInternal(state, targetPagePtr, targetRecOff);
 		if (readLen < 0)
 			goto err;
@@ -1433,6 +1436,7 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 		pageHeaderSize = XLogPageHeaderSize(header);
 
 		/* make sure we have enough data for the page header */
+        /* 确保我们有足够的页眉数据 */
 		readLen = ReadPageInternal(state, targetPagePtr, pageHeaderSize);
 		if (readLen < 0)
 			goto err;
@@ -1478,9 +1482,11 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 	while (XLogReadRecord(state, &errormsg) != NULL)
 	{
 		/* past the record we've found, break out */
+        /* 超过我们找到的记录，中断? */
 		if (RecPtr <= state->ReadRecPtr)
 		{
 			/* Rewind the reader to the beginning of the last record. */
+            /* 将读取器倒回到最后一条记录的开头。 */
 			found = state->ReadRecPtr;
 			XLogBeginRead(state, found);
 			return found;
@@ -1743,6 +1749,10 @@ DecodeXLogRecord(XLogReaderState *state,
 			/* XLogRecordBlockHeader */
 			DecodedBkpBlock *blk;
 			uint8		fork_flags;
+
+			if (record->xl_xid == 704735) {
+				printf("BLACK %d\n", record->xl_xid);
+			}
 
 			/* mark any intervening block IDs as not in use */
 			for (int i = decoded->max_block_id + 1; i < block_id; ++i)

@@ -31,13 +31,18 @@
 /*
  * Each page of XLOG file has a header like this:
  */
+// XLOG 文件的每一页都有一个像这样的标题：
 #define XLOG_PAGE_MAGIC 0xD115	/* can be used as WAL version indicator */
 
 typedef struct XLogPageHeaderData
 {
+	/* 正确性检查的魔法值 */
 	uint16		xlp_magic;		/* magic value for correctness checks */
+	/* 标志位，见下文 */
 	uint16		xlp_info;		/* flag bits, see below */
+	/* 页上第一条记录的 TimeLineID */
 	TimeLineID	xlp_tli;		/* TimeLineID of first record on page */
+	/* 本页的 XLOG 地址 (xlog record 在事务日志的偏移量)*/
 	XLogRecPtr	xlp_pageaddr;	/* XLOG address of this page */
 
 	/*
@@ -46,6 +51,7 @@ typedef struct XLogPageHeaderData
 	 * remaining from a previous page; it tracks xl_tot_len in the initial
 	 * header.  Note that the continuation data isn't necessarily aligned.
 	 */
+	/* 记录剩余数据的总长度 (上一页空间不足以存储 xlog record) */ 
 	uint32		xlp_rem_len;	/* total len of remaining data for record */
 } XLogPageHeaderData;
 
@@ -60,8 +66,11 @@ typedef XLogPageHeaderData *XLogPageHeader;
  */
 typedef struct XLogLongPageHeaderData
 {
+	/* 标准头字段 */
 	XLogPageHeaderData std;		/* standard header fields */
+	/* 来自 pg_control 的系统标识符 */
 	uint64		xlp_sysid;		/* system identifier from pg_control */
+	/* 只是作为交叉检查 */
 	uint32		xlp_seg_size;	/* just as a cross-check */
 	uint32		xlp_xlog_blcksz;	/* just as a cross-check */
 } XLogLongPageHeaderData;
@@ -71,23 +80,30 @@ typedef struct XLogLongPageHeaderData
 typedef XLogLongPageHeaderData *XLogLongPageHeader;
 
 /* When record crosses page boundary, set this flag in new page's header */
+/* 当记录跨越页边界时，在新页的页眉中设置此标志 */
 #define XLP_FIRST_IS_CONTRECORD		0x0001
 /* This flag indicates a "long" page header */
+/* 该标志表示“长”页标题 */
 #define XLP_LONG_HEADER				0x0002
 /* This flag indicates backup blocks starting in this page are optional */
+/* 该标志表示从此页开始的备份块是可选的 */
 #define XLP_BKP_REMOVABLE			0x0004
 /* Replaces a missing contrecord; see CreateOverwriteContrecordRecord */
+/* 替换丢失的记录； 请参阅 CreateOverwriteContrecordRecord */
 #define XLP_FIRST_IS_OVERWRITE_CONTRECORD 0x0008
 /* All defined flag bits in xlp_info (used for validity checking of header) */
+/* xlp_info中所有定义的标志位（用于头的有效性检查）*/
 #define XLP_ALL_FLAGS				0x000F
 
 #define XLogPageHeaderSize(hdr)		\
 	(((hdr)->xlp_info & XLP_LONG_HEADER) ? SizeOfXLogLongPHD : SizeOfXLogShortPHD)
 
 /* wal_segment_size can range from 1MB to 1GB */
+/* wal_segment_size 范围可以从 1MB 到 1GB */
 #define WalSegMinSize 1024 * 1024
 #define WalSegMaxSize 1024 * 1024 * 1024
 /* default number of min and max wal segments */
+/* 默认最小和最大 wal 段数 */
 #define DEFAULT_MIN_WAL_SEGS 5
 #define DEFAULT_MAX_WAL_SEGS 64
 

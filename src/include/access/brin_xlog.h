@@ -24,6 +24,7 @@
 
 /*
  * WAL record definitions for BRIN's WAL operations
+ * BRIN 的 WAL 操作的 WAL 记录定义
  *
  * XLOG allows to store some information in high 4 bits of log
  * record xl_info field.
