@@ -102,6 +102,7 @@ XLogReaderSetDecodeBuffer(XLogReaderState *state, void *buffer, size_t size)
  *
  * Returns NULL if the xlogreader couldn't be allocated.
  */
+// 分配并初始化新的 XLogReader
 XLogReaderState *
 XLogReaderAllocate(int wal_segment_size, const char *waldir,
 				   XLogReaderRoutine *routine, void *private_data)
@@ -133,6 +134,7 @@ XLogReaderAllocate(int wal_segment_size, const char *waldir,
 	}
 
 	/* Initialize segment info. */
+	/* 初始化区段信息。*/
 	WALOpenSegmentInit(&state->seg, &state->segcxt, wal_segment_size,
 					   waldir);
 
@@ -266,6 +268,7 @@ XLogReleasePreviousRecord(XLogReaderState *state)
 	state->decode_queue_head = record->next;
 
 	/* It might also be the newest item decoded, decode_queue_tail. */
+	/* 它也可能是最新解码的项目，decode_queue_tail。*/
 	if (state->decode_queue_tail == record)
 		state->decode_queue_tail = NULL;
 
@@ -398,12 +401,15 @@ XLogReadRecord(XLogReaderState *state, char **errormsg)
 	 * Release last returned record, if there is one.  We need to do this so
 	 * that we can check for empty decode queue accurately.
 	 */
+    // 释放上次返回的记录（如果有）。 
+    // 我们需要这样做，以便我们可以准确地检查空解码队列。
 	XLogReleasePreviousRecord(state);
 
 	/*
 	 * Call XLogReadAhead() in blocking mode to make sure there is something
 	 * in the queue, though we don't use the result.
 	 */
+    // 在阻塞模式下调用 XLogReadAhead 以确保队列中有某些内容，尽管我们不使用结果。
 	if (!XLogReaderHasQueuedRecordOrError(state))
 		XLogReadAhead(state, false /* nonblocking */ );
 
@@ -968,6 +974,9 @@ err:
  * If nonblocking is true, may return NULL due to lack of data or WAL decoding
  * space.
  */
+// 尝试解码下一个可用记录，并返回它。
+// 该记录还将返回给 XLogNextRecord（），
+// 必须调用该记录才能“使用”每条记录。
 DecodedXLogRecord *
 XLogReadAhead(XLogReaderState *state, bool nonblocking)
 {
@@ -1016,6 +1025,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	targetPageOff = XLogSegmentOffset(pageptr, state->segcxt.ws_segsize);
 
 	/* check whether we have all the requested data already */
+	/* 检查我们是否已经拥有所有请求的数据 */
 	if (targetSegNo == state->seg.ws_segno &&
 		targetPageOff == state->segoff && reqLen <= state->readLen)
 		return state->readLen;
@@ -1025,10 +1035,15 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	 * the length to 0, rather than a full XLogReaderInvalReadState(), so we
 	 * don't forget the segment we last successfully read.
 	 */
+
+    // 在读取尝试之前使内部缓冲区的内容失效。
+    // 只需将长度设置为 0，而不是完整的 XLogReaderInvalReadState（），
+    // 这样我们就不会忘记上次成功读取的段。
 	state->readLen = 0;
 
 	/*
 	 * Data is not in our buffer.
+     * 数据不在我们的缓冲区中。
 	 *
 	 * Every time we actually read the segment, even if we looked at parts of
 	 * it before, we need to do verification as the page_read callback might
@@ -1052,6 +1067,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 			goto err;
 
 		/* we can be sure to have enough WAL available, we scrolled back */
+		/* 我们可以确保有足够的 WAL 可用，我们向后滚动 */
 		Assert(readLen == XLOG_BLCKSZ);
 
 		if (!XLogReaderValidatePageHeader(state, targetSegmentPtr,
@@ -1063,6 +1079,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	 * First, read the requested data length, but at least a short page header
 	 * so that we can validate it.
 	 */
+    // 首先，读取请求的数据长度，但至少要有一个简短的页眉，以便我们可以对其进行验证。
 	readLen = state->routine.page_read(state, pageptr, Max(reqLen, SizeOfXLogShortPHD),
 									   state->currRecPtr,
 									   state->readBuf);
@@ -1082,6 +1099,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	hdr = (XLogPageHeader) state->readBuf;
 
 	/* still not enough */
+	/* 还是不够 */
 	if (readLen < XLogPageHeaderSize(hdr))
 	{
 		readLen = state->routine.page_read(state, pageptr, XLogPageHeaderSize(hdr),
@@ -1100,6 +1118,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 		goto err;
 
 	/* update read state information */
+	/* 更新读取状态信息 */
 	state->seg.ws_segno = targetSegNo;
 	state->segoff = targetPageOff;
 	state->readLen = readLen;
@@ -1226,6 +1245,7 @@ ValidXLogRecord(XLogReaderState *state, XLogRecord *record, XLogRecPtr recptr)
  * Check if 'phdr' is valid as the header of the XLog page at position
  * 'recptr'.
  */
+// 验证页眉
 bool
 XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
 							 char *phdr)
@@ -1403,6 +1423,7 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 	 * skip over potential continuation data, keeping in mind that it may span
 	 * multiple pages
 	 */
+    // 跳过潜在的延续数据，请记住，它可能跨越多个页面
 	tmpRecPtr = RecPtr;
 	while (true)
 	{
@@ -1423,6 +1444,7 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 		targetRecOff = tmpRecPtr % XLOG_BLCKSZ;
 
 		/* scroll back to page boundary */
+		/* 滚动回页面边界 */
 		targetPagePtr = tmpRecPtr - targetRecOff;
 
 		/* Read the page containing the record */
@@ -1442,6 +1464,7 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 			goto err;
 
 		/* skip over potential continuation data */
+		/* 跳过潜在的延续数据 */
 		if (header->xlp_info & XLP_FIRST_IS_CONTRECORD)
 		{
 			/*
@@ -1453,6 +1476,9 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 			 *
 			 * Note that record headers are MAXALIGN'ed
 			 */
+            // 如果剩余延续数据的长度超过此页面的容量，则延续记录将跨越此页面。
+            // 阅读下一页，然后重试。
+            // 下一页标题中的xlp_rem_len将包含延续数据的剩余长度
 			if (MAXALIGN(header->xlp_rem_len) >= (XLOG_BLCKSZ - pageHeaderSize))
 				tmpRecPtr = targetPagePtr + XLOG_BLCKSZ;
 			else
@@ -1482,11 +1508,11 @@ XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr)
 	while (XLogReadRecord(state, &errormsg) != NULL)
 	{
 		/* past the record we've found, break out */
-        /* 超过我们找到的记录，中断? */
+		/* 超越我们发现的记录，中断 */
 		if (RecPtr <= state->ReadRecPtr)
 		{
 			/* Rewind the reader to the beginning of the last record. */
-            /* 将读取器倒回到最后一条记录的开头。 */
+			/* 将阅读器倒回最后一条记录的开头。*/
 			found = state->ReadRecPtr;
 			XLogBeginRead(state, found);
 			return found;
