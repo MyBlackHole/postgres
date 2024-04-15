@@ -1135,6 +1135,7 @@ main(int argc, char **argv)
 		close(fd);
 
 		/* parse position from file */
+		/* 解析文件中的位置 */
 		XLogFromFileName(fname, &private.timeline, &segno, WalSegSz);
 
 		if (XLogRecPtrIsInvalid(private.startptr))

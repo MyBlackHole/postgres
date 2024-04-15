@@ -495,6 +495,7 @@ CheckRestrictedOperation(const char *cmdname)
  * sub-statements, often passing down the same queryString, stmt_location,
  * and stmt_len that were given for the whole statement.
  */
+// 通用实用函数调用器
 void
 ProcessUtility(PlannedStmt *pstmt,
 			   const char *queryString,
@@ -515,6 +516,8 @@ ProcessUtility(PlannedStmt *pstmt,
 	 * control when ProcessUtility is called.  Such a plugin would normally
 	 * call standard_ProcessUtility().
 	 */
+	// 我们提供了一个函数钩子变量，让可加载插件在调用 ProcessUtility 时获得控制权。 
+	// 这样的插件通常会调用standard_ProcessUtility()。
 	if (ProcessUtility_hook)
 		(*ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
 								context, params, queryEnv,
@@ -536,6 +539,9 @@ ProcessUtility(PlannedStmt *pstmt,
  * example, because we might need to refresh the event trigger cache,
  * which requires being in a valid transaction.
  */
+// standard_ProcessUtility 本身仅处理我们不提供事件触发器支持的实用程序命令。
+// 确实具有此类支持的命令将被传递到 ProcessUtilitySlow，其中包含此类触发器所需的基础结构。
+// 标准流程使用程序
 void
 standard_ProcessUtility(PlannedStmt *pstmt,
 						const char *queryString,
@@ -1137,6 +1143,7 @@ ProcessUtilitySlow(ParseState *pstate,
 					RangeVar   *table_rv = NULL;
 
 					/* Run parse analysis ... */
+					/* 运行解析分析... */
 					stmts = transformCreateStmt((CreateStmt *) parsetree,
 												queryString);
 
@@ -1153,14 +1160,17 @@ ProcessUtilitySlow(ParseState *pstate,
 
 						if (IsA(stmt, CreateStmt))
 						{
+							// 内部表
 							CreateStmt *cstmt = (CreateStmt *) stmt;
 							Datum		toast_options;
 							static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
 
 							/* Remember transformed RangeVar for LIKE */
+							/* 记住 LIKE 变换后的 RangeVar */
 							table_rv = cstmt->relation;
 
 							/* Create the table itself */
+							/* 创建表本身 */
 							address = DefineRelation(cstmt,
 													 RELKIND_RELATION,
 													 InvalidOid, NULL,
@@ -1197,9 +1207,11 @@ ProcessUtilitySlow(ParseState *pstate,
 							CreateForeignTableStmt *cstmt = (CreateForeignTableStmt *) stmt;
 
 							/* Remember transformed RangeVar for LIKE */
+							/* 记住 LIKE 变换后的 RangeVar */
 							table_rv = cstmt->base.relation;
 
 							/* Create the table itself */
+							/* 创建表本身 */
 							address = DefineRelation(&cstmt->base,
 													 RELKIND_FOREIGN_TABLE,
 													 InvalidOid, NULL,

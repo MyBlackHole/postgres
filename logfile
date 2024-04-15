@@ -1,0 +1,22 @@
+2024-04-16 04:48:32.837 CST [11708] LOG:  starting PostgreSQL 17devel on x86_64-pc-linux-gnu, compiled by gcc (GCC) 13.2.1 20230801, 64-bit
+2024-04-16 04:48:32.838 CST [11708] LOG:  listening on IPv6 address "::1", port 5432
+2024-04-16 04:48:32.838 CST [11708] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2024-04-16 04:48:32.841 CST [11708] LOG:  listening on Unix socket "/tmp/.s.PGSQL.5432"
+2024-04-16 04:48:32.853 CST [11711] LOG:  database system was shut down at 2024-04-03 18:27:00 CST
+2024-04-16 04:48:32.867 CST [11708] LOG:  database system is ready to accept connections
+2024-04-16 04:49:33.276 CST [11780] ERROR:  syntax error at or near "\" at character 1
+2024-04-16 04:49:33.276 CST [11780] STATEMENT:  \dtt
+2024-04-16 04:51:17.689 CST [11780] ERROR:  syntax error at or near "\" at character 1
+2024-04-16 04:51:17.689 CST [11780] STATEMENT:  \d+pgbench_tellers
+2024-04-16 04:53:32.914 CST [11709] LOG:  checkpoint starting: time
+2024-04-16 04:53:35.858 CST [11709] LOG:  checkpoint complete: wrote 32 buffers (0.2%); 0 WAL file(s) added, 1 removed, 0 recycled; write=2.917 s, sync=0.009 s, total=2.944 s; sync files=23, longest=0.003 s, average=0.001 s; distance=126 kB, estimate=126 kB; lsn=0/7201FA38, redo lsn=0/7201F9A8
+2024-04-16 05:03:32.987 CST [11709] LOG:  checkpoint starting: time
+2024-04-16 05:03:33.212 CST [11709] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.205 s, sync=0.004 s, total=0.225 s; sync files=3, longest=0.003 s, average=0.002 s; distance=1 kB, estimate=113 kB; lsn=0/72020170, redo lsn=0/72020118
+2024-04-16 05:08:07.514 CST [11780] ERROR:  relation "pg_toast_16715" does not exist at character 29
+2024-04-16 05:08:07.514 CST [11780] STATEMENT:  select pg_relation_filepath('pg_toast_16715')
+2024-04-16 05:08:32.501 CST [11780] ERROR:  relation "pg_toast_16715" does not exist at character 29
+2024-04-16 05:08:32.501 CST [11780] STATEMENT:  select pg_relation_filepath('pg_toast_16715')
+2024-04-16 05:10:00.023 CST [11780] ERROR:  relation "pg_toast" does not exist at character 29
+2024-04-16 05:10:00.023 CST [11780] STATEMENT:  select pg_relation_filepath('pg_toast')
+2024-04-16 05:10:03.936 CST [11780] ERROR:  relation "toast" does not exist at character 29
+2024-04-16 05:10:03.936 CST [11780] STATEMENT:  select pg_relation_filepath('toast')

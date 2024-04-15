@@ -890,6 +890,8 @@ XLogInsertRecord(XLogRecData *rdata,
 		 * Reserve space for the record in the WAL. This also sets the xl_prev
 		 * pointer.
 		 */
+		// 在 WALL 中为记录预留空间。 
+		// 这也会设置 xl_prev 指针。
 		ReserveXLogInsertLocation(rechdr->xl_tot_len, &StartPos, &EndPos,
 								  &rechdr->xl_prev);
 
@@ -947,6 +949,8 @@ XLogInsertRecord(XLogRecData *rdata,
 		 * All the record data, including the header, is now ready to be
 		 * inserted. Copy the record in the space reserved.
 		 */
+		// 所有记录数据（包括标题）现在都已准备好插入。 
+		// 将记录复制到保留的空间中。
 		CopyXLogRecordToWAL(rechdr->xl_tot_len,
 							class == WALINSERT_SPECIAL_SWITCH, rdata,
 							StartPos, EndPos, insertTLI);
@@ -1307,6 +1311,7 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 			pagehdr->xlp_info |= XLP_FIRST_IS_CONTRECORD;
 
 			/* skip over the page header */
+			/* 跳过页眉 */
 			if (XLogSegmentOffset(CurrPos, wal_segment_size) == 0)
 			{
 				CurrPos += SizeOfXLogLongPHD;

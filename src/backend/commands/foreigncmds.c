@@ -1400,6 +1400,7 @@ RemoveUserMapping(DropUserMappingStmt *stmt)
  * Create a foreign table
  * call after DefineRelation().
  */
+// 在 DefineRelation() 之后创建外部表调用。
 void
 CreateForeignTable(CreateForeignTableStmt *stmt, Oid relid)
 {

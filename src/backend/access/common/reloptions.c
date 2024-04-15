@@ -2015,6 +2015,7 @@ view_reloptions(Datum reloptions, bool validate)
 /*
  * Parse options for heaps, views and toast tables.
  */
+// 解析堆、视图和 Toast 表的选项。
 bytea *
 heap_reloptions(char relkind, Datum reloptions, bool validate)
 {

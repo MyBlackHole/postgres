@@ -359,7 +359,9 @@ extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
 typedef enum XLogPageReadResult
 {
 	XLREAD_SUCCESS = 0,			/* record is successfully read */
+	/* 读取记录失败 */
 	XLREAD_FAIL = -1,			/* failed during reading a record */
+	/* 仅非阻塞模式，无数据 */
 	XLREAD_WOULDBLOCK = -2,		/* nonblocking mode only, no data */
 } XLogPageReadResult;
 

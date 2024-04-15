@@ -860,6 +860,7 @@ wal_segment_close(XLogReaderState *state)
  * exists for normal backends, so we have to do a check/sleep/repeat style of
  * loop for now.
  */
+// XLogReaderRoutine->page_read 回调用于读取本地 xlog 文件
 int
 read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 					 int reqLen, XLogRecPtr targetRecPtr, char *cur_page)
@@ -883,6 +884,7 @@ read_local_xlog_page_no_wait(XLogReaderState *state, XLogRecPtr targetPagePtr,
 
 /*
  * Implementation of read_local_xlog_page and its no wait version.
+ * read_local_xlog_page 及其无等待版本的实现。
  */
 static int
 read_local_xlog_page_guts(XLogReaderState *state, XLogRecPtr targetPagePtr,
@@ -899,6 +901,7 @@ read_local_xlog_page_guts(XLogReaderState *state, XLogRecPtr targetPagePtr,
 	loc = targetPagePtr + reqLen;
 
 	/* Loop waiting for xlog to be available if necessary */
+	/* 必要时循环等待 xlog 可用 */
 	while (1)
 	{
 		/*
@@ -999,6 +1002,7 @@ read_local_xlog_page_guts(XLogReaderState *state, XLogRecPtr targetPagePtr,
 	else if (targetPagePtr + reqLen > read_upto)
 	{
 		/* not enough data there */
+		/* 没有足够的数据 */
 		return -1;
 	}
 	else

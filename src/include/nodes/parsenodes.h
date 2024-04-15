@@ -2657,6 +2657,7 @@ typedef struct VariableShowStmt
 typedef struct CreateStmt
 {
 	NodeTag		type;
+	/* 创建关系 */
 	RangeVar   *relation;		/* relation to create */
 	List	   *tableElts;		/* column definitions (list of ColumnDef) */
 	List	   *inhRelations;	/* relations to inherit from (list of

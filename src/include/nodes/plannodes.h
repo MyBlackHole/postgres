@@ -57,6 +57,7 @@ typedef struct PlannedStmt
 
 	bool		hasModifyingCTE;	/* has insert|update|delete in WITH? */
 
+	/* 我是否设置命令结果标签？ */
 	bool		canSetTag;		/* do I set the command result tag? */
 
 	bool		transientPlan;	/* redo plan when TransactionXmin changes? */
@@ -92,6 +93,7 @@ typedef struct PlannedStmt
 
 	List	   *paramExecTypes; /* type OIDs for PARAM_EXEC Params */
 
+	/* 如果这是实用程序 stmt，则非空 */
 	Node	   *utilityStmt;	/* non-null if this is utility stmt */
 
 	/* statement location in source string (copied from Query) */

@@ -1011,6 +1011,7 @@ pg_plan_queries(List *querytrees, const char *query_string, int cursorOptions,
  *
  * Execute a "simple Query" protocol message.
  */
+// 执行“简单查询”协议消息。
 static void
 exec_simple_query(const char *query_string)
 {
@@ -2096,6 +2097,7 @@ exec_bind_message(StringInfo input_message)
  *
  * Process an "Execute" message for a portal
  */
+// 处理门户的“执行”消息
 static void
 exec_execute_message(const char *portal_name, long max_rows)
 {
@@ -2184,6 +2186,7 @@ exec_execute_message(const char *portal_name, long max_rows)
 	 * Ensure we are in a transaction command (this should normally be the
 	 * case already due to prior BIND).
 	 */
+	// 确保我们处于事务命令中（由于之前的 BIND，通常应该是这种情况）。
 	start_xact_command();
 
 	/*

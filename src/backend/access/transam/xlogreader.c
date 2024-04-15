@@ -525,6 +525,7 @@ XLogReadRecordAlloc(XLogReaderState *state, size_t xl_tot_len, bool allow_oversi
 	}
 
 	/* Not enough space in the decode buffer.  Are we allowed to allocate? */
+	/* 解码缓冲区中没有足够的空间。 我们可以分配吗？*/
 	if (allow_oversized)
 	{
 		decoded = palloc(required_space);
@@ -606,6 +607,9 @@ restart:
 	 * byte to cover the whole record header, or at least the part of it that
 	 * fits on the same page.
 	 */
+	// 将包含记录的页面读入state->readBuf。 
+	// 请求足够的字节来覆盖整个记录头，
+	// 或者至少覆盖同一页上的部分记录头。
 	readOff = ReadPageInternal(state, targetPagePtr,
 							   Min(targetRecOff + SizeOfXLogRecord, XLOG_BLCKSZ));
 	if (readOff == XLREAD_WOULDBLOCK)
@@ -675,6 +679,7 @@ restart:
 	else
 	{
 		/* There may be no next page if it's too small. */
+		/* 如果下一页太小，可能没有下一页。*/
 		if (total_len < SizeOfXLogRecord)
 		{
 			report_invalid_record(state,
@@ -684,6 +689,7 @@ restart:
 			goto err;
 		}
 		/* We'll validate the header once we have the next page. */
+		/* 一旦我们有下一页，我们将验证标题。*/
 		gotheader = false;
 	}
 
@@ -735,6 +741,7 @@ restart:
 			targetPagePtr += XLOG_BLCKSZ;
 
 			/* Wait for the next page to become available */
+			/* 等待下一页可用 */
 			readOff = ReadPageInternal(state, targetPagePtr,
 									   Min(total_len - gotlen + SizeOfXLogShortPHD,
 										   XLOG_BLCKSZ));
@@ -855,6 +862,7 @@ restart:
 	else
 	{
 		/* Wait for the record data to become available */
+		/* 等待记录数据可用 */
 		readOff = ReadPageInternal(state, targetPagePtr,
 								   Min(targetRecOff + total_len, XLOG_BLCKSZ));
 		if (readOff == XLREAD_WOULDBLOCK)
@@ -863,6 +871,7 @@ restart:
 			goto err;
 
 		/* Record does not cross a page boundary */
+		/* 记录不跨越页边界 */
 		if (!ValidXLogRecord(state, record, RecPtr))
 			goto err;
 
@@ -873,11 +882,13 @@ restart:
 
 	/*
 	 * Special processing if it's an XLOG SWITCH record
+	 * 如果是 XLOG SWITCH 记录则进行特殊处理
 	 */
 	if (record->xl_rmid == RM_XLOG_ID &&
 		(record->xl_info & ~XLR_INFO_MASK) == XLOG_SWITCH)
 	{
 		/* Pretend it extends to end of segment */
+		/* 假装它延伸到段的末尾 */
 		state->NextRecPtr += state->segcxt.ws_segsize - 1;
 		state->NextRecPtr -= XLogSegmentOffset(state->NextRecPtr, state->segcxt.ws_segsize);
 	}
@@ -899,6 +910,7 @@ restart:
 	if (DecodeXLogRecord(state, decoded, record, RecPtr, &errormsg))
 	{
 		/* Record the location of the next record. */
+		/* 记录下一条记录的位置。*/
 		decoded->next_lsn = state->NextRecPtr;
 
 		/*
@@ -1011,6 +1023,7 @@ XLogReadAhead(XLogReaderState *state, bool nonblocking)
  * We fetch the page from a reader-local cache if we know we have the required
  * data and if there hasn't been any error since caching the data.
  */
+// 通过 page_read() 回调读取至少包含 [pageptr, reqLen] 有效数据的单个 xlog 页面。
 static int
 ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 {
@@ -1114,6 +1127,7 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	/*
 	 * Now that we know we have the full header, validate it.
 	 */
+	// 现在我们知道我们有完整的标头，验证它。
 	if (!XLogReaderValidatePageHeader(state, pageptr, (char *) hdr))
 		goto err;
 

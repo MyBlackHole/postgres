@@ -83,10 +83,12 @@ typedef struct CheckPoint
 } CheckPoint;
 
 /* XLOG info values for XLOG rmgr */
+/* XLOG rmgr 的 XLOG 信息值 */
 #define XLOG_CHECKPOINT_SHUTDOWN		0x00
 #define XLOG_CHECKPOINT_ONLINE			0x10
 #define XLOG_NOOP						0x20
 #define XLOG_NEXTOID					0x30
+// 切换 xlog 文件
 #define XLOG_SWITCH						0x40
 #define XLOG_BACKUP_END					0x50
 #define XLOG_PARAMETER_CHANGE			0x60

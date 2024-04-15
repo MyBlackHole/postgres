@@ -787,6 +787,7 @@ typedef NameData *Name;
  * lengthof
  *		Number of elements in an array.
  */
+// 获取数组中的元素数量
 #define lengthof(array) (sizeof (array) / sizeof ((array)[0]))
 
 /* ----------------

@@ -117,9 +117,11 @@ typedef struct ActiveSnapshotElt
 } ActiveSnapshotElt;
 
 /* Top of the stack of active snapshots */
+/* 活动快照堆栈顶部 */
 static ActiveSnapshotElt *ActiveSnapshot = NULL;
 
 /* Bottom of the stack of active snapshots */
+/* 活动快照堆栈底部 */
 static ActiveSnapshotElt *OldestActiveSnapshot = NULL;
 
 /*
@@ -766,6 +768,8 @@ PopActiveSnapshot(void)
  * GetActiveSnapshot
  *		Return the topmost snapshot in the Active stack.
  */
+// 获取活动快照
+//   返回活动堆栈中最顶层的快照。
 Snapshot
 GetActiveSnapshot(void)
 {

@@ -163,6 +163,7 @@ static Const *transformPartitionBoundValue(ParseState *pstate, Node *val,
  * then expand those into multiple IndexStmt blocks.
  *	  - thomas 1997-12-02
  */
+// CREATE TABLE 的解析分析
 List *
 transformCreateStmt(CreateStmt *stmt, const char *queryString)
 {

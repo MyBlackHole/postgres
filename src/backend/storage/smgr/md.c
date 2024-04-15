@@ -806,6 +806,7 @@ buffers_to_iovec(struct iovec *iov, void **buffers, int nblocks)
 /*
  * mdreadv() -- Read the specified blocks from a relation.
  */
+// 从关系中读取指定的块。
 void
 mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		void **buffers, BlockNumber nblocks)

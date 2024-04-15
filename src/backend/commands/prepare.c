@@ -143,6 +143,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
  * set up correctly for CREATE TABLE AS, but we still have to make a few
  * other adjustments here.
  */
+// 实施“EXECUTE”实用程序语句。
 void
 ExecuteQuery(ParseState *pstate,
 			 ExecuteStmt *stmt, IntoClause *intoClause,
@@ -250,6 +251,7 @@ ExecuteQuery(ParseState *pstate,
 	/*
 	 * Run the portal as appropriate.
 	 */
+	// 根据需要运行门户
 	PortalStart(portal, paramLI, eflags, GetActiveSnapshot());
 
 	(void) PortalRun(portal, count, false, true, dest, dest, qc);

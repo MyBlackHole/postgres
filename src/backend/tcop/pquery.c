@@ -132,6 +132,8 @@ FreeQueryDesc(QueryDesc *qdesc)
  * Must be called in a memory context that will be reset or deleted on
  * error; otherwise the executor's memory usage will be leaked.
  */
+// 在 PORTAL_MULTI_QUERY 中执行单个可规划查询，
+// PORTAL_ONE_RETURNING 或 PORTAL_ONE_MOD_WITH 门户
 static void
 ProcessQuery(PlannedStmt *plan,
 			 const char *sourceText,
@@ -208,6 +210,7 @@ ProcessQuery(PlannedStmt *plan,
  *
  * See the comments in portal.h.
  */
+// 根据预期的语句列表选择门户执行策略。
 PortalStrategy
 ChoosePortalStrategy(List *stmts)
 {
@@ -683,6 +686,8 @@ PortalSetResultFormat(Portal portal, int nFormats, int16 *formats)
  * Returns true if the portal's execution is complete, false if it was
  * suspended due to exhaustion of the count parameter.
  */
+// 传送门运行
+//   运行门户的一个或多个查询。
 bool
 PortalRun(Portal portal, long count, bool isTopLevel, bool run_once,
 		  DestReceiver *dest, DestReceiver *altdest,
@@ -1127,6 +1132,7 @@ RunFromStore(Portal portal, ScanDirection direction, uint64 count,
  * PortalRunUtility
  *		Execute a utility statement inside a portal.
  */
+// 在门户内执行实用程序语句。
 static void
 PortalRunUtility(Portal portal, PlannedStmt *pstmt,
 				 bool isTopLevel, bool setHoldSnapshot,

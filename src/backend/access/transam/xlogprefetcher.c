@@ -529,6 +529,7 @@ XLogPrefetcherNextBlock(uintptr_t pgsr_private, XLogRecPtr *lsn)
 		 * Check for operations that require us to filter out block ranges, or
 		 * pause readahead completely.
 		 */
+		// 检查是否有需要我们过滤掉块范围或完全暂停预读的操作。
 		if (replaying_lsn < record->lsn)
 		{
 			uint8		rmid = record->header.xl_rmid;

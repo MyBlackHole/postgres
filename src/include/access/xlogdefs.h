@@ -45,6 +45,7 @@ typedef uint64 XLogRecPtr;
 /*
  * XLogSegNo - physical log file sequence number.
  */
+// 物理日志文件序列号。
 typedef uint64 XLogSegNo;
 
 /*
