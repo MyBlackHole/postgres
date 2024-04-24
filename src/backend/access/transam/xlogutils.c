@@ -816,6 +816,7 @@ XLogReadDetermineTimeline(XLogReaderState *state, XLogRecPtr wantPage,
 }
 
 /* XLogReaderRoutine->segment_open callback for local pg_wal files */
+// 打开 wal 段文件
 void
 wal_segment_open(XLogReaderState *state, XLogSegNo nextSegNo,
 				 TimeLineID *tli_p)
@@ -841,6 +842,7 @@ wal_segment_open(XLogReaderState *state, XLogSegNo nextSegNo,
 }
 
 /* stock XLogReaderRoutine->segment_close callback */
+// 关闭打开的 wal 段文件
 void
 wal_segment_close(XLogReaderState *state)
 {

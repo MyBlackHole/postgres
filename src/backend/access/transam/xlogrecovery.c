@@ -1771,6 +1771,7 @@ PerformWalRecovery(void)
 						LSN_FORMAT_ARGS(xlogreader->ReadRecPtr))));
 
 		/* Prepare to report progress of the redo phase. */
+		/* 准备报告重做阶段的进度。 */
 		if (!StandbyMode)
 			begin_startup_progress_phase();
 
@@ -1991,6 +1992,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 		if (newReplayTLI != *replayTLI)
 		{
 			/* Check that it's OK to switch to this TLI */
+			/* 检查是否可以切换到这个 TLI */
 			checkTimeLineSwitch(xlogreader->EndRecPtr,
 								newReplayTLI, prevReplayTLI, *replayTLI);
 
@@ -2087,6 +2089,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	CheckRecoveryConsistency();
 
 	/* Is this a timeline switch? */
+	/* 这是时间线切换吗 */
 	if (switchedTLI)
 	{
 		/*
@@ -2096,6 +2099,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 		RemoveNonParentXlogFiles(xlogreader->EndRecPtr, *replayTLI);
 
 		/* Reset the prefetcher. */
+		/* 重置预取器 */
 		XLogPrefetchReconfigure();
 	}
 }

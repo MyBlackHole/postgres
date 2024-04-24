@@ -243,6 +243,7 @@ CreateSharedMemoryAndSemaphores(void)
 	InitShmemAllocation();
 
 	/* Initialize subsystems */
+	// 初始化子系统
 	CreateOrAttachShmemStructs();
 
 #ifdef EXEC_BACKEND
@@ -297,11 +298,13 @@ CreateOrAttachShmemStructs(void)
 
 	/*
 	 * Set up xlog, clog, and buffers
+	 * 设置 xlog、clog 和缓冲区
 	 */
 	VarsupShmemInit();
 	XLOGShmemInit();
 	XLogPrefetchShmemInit();
 	XLogRecoveryShmemInit();
+	// xact 初始化
 	CLOGShmemInit();
 	CommitTsShmemInit();
 	SUBTRANSShmemInit();

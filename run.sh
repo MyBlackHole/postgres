@@ -1,11 +1,11 @@
-./configure CFLAGS='-g -O0' --enable-debug --prefix=/run/media/black/Data/lib/postgres/zh_master
+./configure CFLAGS='-g -O0' --enable-debug --prefix=$TOOLSHOME/postgres/zh_master
 ./configure CFLAGS='-g -O0' --enable-debug --with-wal-blocksize=64
 
 # 编译安装
 make install
 
-export PATH=/run/media/black/Data/lib/postgres/zh_master/bin:$PATH
-export LD_LIBRARY_PATH=/run/media/black/Data/lib/postgres/zh_master/lib/:$LD_LIBRARY_PATH
+export PATH=$TOOLSHOME/postgres/zh_master/bin:$PATH
+export LD_LIBRARY_PATH=$TOOLSHOME/postgres/zh_master/lib/:$LD_LIBRARY_PATH
 
 # 初始化数据库 (需要安装后执行, 内部查找 postgres)
 initdb -d -D Debug/database
@@ -22,7 +22,7 @@ pg_ctl -D Debug/database -l logfile start
 pgbench -h 127.0.0.1 -i -s 5 postgres
 
 ❯ ps aux|grep postgres
-black     717685  0.0  0.1 203732 22272 ?        Ss   21:07   0:00 /media/black/Data/lib/postgres/zh_master/bin/postgres -D Debug/database
+black     717685  0.0  0.1 203732 22272 ?        Ss   21:07   0:00 /media/black/Data/tools/postgres/zh_master/bin/postgres -D Debug/database
 black     717686  0.0  0.0 203864  3488 ?        Ss   21:07   0:00 postgres: checkpointer
 black     717687  0.0  0.0 203888  4896 ?        Ss   21:07   0:00 postgres: background writer
 black     717689  0.0  0.0 203732  7712 ?        Ss   21:07   0:00 postgres: walwriter
@@ -37,6 +37,23 @@ psql postgres
 psql -h 127.0.0.1 postgres
 # black 为 linux 当前登陆用户
 pgcli -h 127.0.0.1 -U black postgres
+
+# debug postgres
+gdb --args ./src/backend/postgres -D Debug/database
+
+# xace 使用测试
+break StartupProcessMain
+break SlruReportIOError
+
+#0  SlruReportIOError (ctl=0x5555560fb720 <XactCtlData>, pageno=0, xid=935) at slru.c:1036
+#1  0x00005555556f8190 in SimpleLruReadPage (ctl=0x5555560fb720 <XactCtlData>, pageno=0, write_ok=false, xid=935) at slru.c:568
+#2  0x00005555556ed4c8 in TrimCLOG () at clog.c:928
+#3  0x0000555555711428 in StartupXLOG () at xlog.c:6032
+#4  0x0000555555aaef87 in StartupProcessMain (startup_data=0x0, startup_data_len=0) at startup.c:260
+#5  0x0000555555aa7a4b in postmaster_child_launch (child_type=B_STARTUP, startup_data=0x0, startup_data_len=0, client_sock=0x0) at launch_backend.c:265
+#6  0x0000555555aade0e in StartChildProcess (type=B_STARTUP) at postmaster.c:3985
+#7  0x0000555555aaa4c3 in PostmasterMain (argc=3, argv=0x555556146b90) at postmaster.c:1405
+#8  0x000055555596f6cc in main (argc=3, argv=0x555556146b90) at main.c:197
 
 
 # 启动前

@@ -171,6 +171,8 @@ pg_backup_stop(PG_FUNCTION_ARGS)
  *
  * Permission checking for this function is managed through the normal
  * GRANT system.
+ *
+ * 切换到下一个 xlog 文件
  */
 Datum
 pg_switch_wal(PG_FUNCTION_ARGS)

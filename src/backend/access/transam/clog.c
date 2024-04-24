@@ -831,6 +831,8 @@ check_transaction_buffers(int *newval, void **extra, GucSource source)
  * have been created by initdb, and CLOGShmemInit must have been
  * called already.)
  */
+// 该函数必须在系统安装时调用一次。 它创建初始 CLOG 段。 
+// （假设 CLOG 目录已由 initdb 创建，并且 CLOGShmemInit 必须已被调用。）
 void
 BootStrapCLOG(void)
 {
@@ -840,6 +842,7 @@ BootStrapCLOG(void)
 	LWLockAcquire(lock, LW_EXCLUSIVE);
 
 	/* Create and zero the first page of the commit log */
+	/* 创建提交日志的第一页并将其清零 */
 	slotno = ZeroCLOGPage(0, false);
 
 	/* Make sure it's written out */
@@ -914,7 +917,8 @@ TrimCLOG(void)
 	 * "current" page doesn't exist yet in that case.)
 	 */
 	// 将当前堵塞页面的剩余部分清零
-	// 在正常情况下，它应该已经为零，但至少从理论上讲，XLOG 重放似乎可能会确定一个 nextXID 值，该值小于实际使用的最后一个 XID 并由先前的数据库生命周期标记（因为子事务提交会写入堵塞，但会使 无 WAL 条目）
+	// 在正常情况下，它应该已经为零，但至少从理论上讲，XLOG 重放似乎可能会确定一个 nextXID 值，
+	// 该值小于实际使用的最后一个 XID 并由先前的数据库生命周期标记（因为子事务提交会写入堵塞，但会使 无 WAL 条目）
 	// 让我们安全一点
 	// （我们不必担心当前页面之外的页面，因为这些页面在第一次使用时将被清零
 	// 出于同样的原因，当 nextXid 恰好位于页面边界时，无需执行任何操作； 在这种情况下，“当前”页面可能还不存在。）
@@ -1113,6 +1117,7 @@ WriteTruncateXlogRec(int64 pageno, TransactionId oldestXact, Oid oldestXactDb)
 
 /*
  * CLOG resource manager's routines
+ * CLOG资源管理器的例程
  */
 void
 clog_redo(XLogReaderState *record)

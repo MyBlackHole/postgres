@@ -346,8 +346,11 @@ WalSummarizerMain(char *startup_data, size_t startup_data_len)
 	 *
 	 * If we discover that WAL summarization is not enabled, just exit.
 	 *
-	 * 从共享内存中获取有关先前进度的信息，并要求 GetOldestUnsummarizedLSN 将 pending_lsn 重置为 summarized_lsn
-	 * 我们可能正在从错误中恢复，如果是这样，pending_lsn 可能已经超过了summary_lsn，但是我们之前读取的任何 WAL 都已丢失，需要重新读取
+	 * 从共享内存中获取有关先前进度的信息，
+	 * 并要求 GetOldestUnsummarizedLSN 将 pending_lsn 重置为 summarized_lsn
+	 * 我们可能正在从错误中恢复，
+	 * 如果是这样，pending_lsn 可能已经超过了summary_lsn，
+	 * 但是我们之前读取的任何 WAL 都已丢失，需要重新读取
 	 *
 	 * 如果我们发现WAL汇总没有启用，就退出。
 	 */
@@ -586,6 +589,7 @@ GetOldestUnsummarizedLSN(TimeLineID *tli, bool *lsn_is_exact,
 		if (oldest_segno != 0)
 		{
 			/* Compute oldest LSN that still exists on disk. */
+			/* 计算磁盘上仍然存在的最旧的 LSN。 */
 			XLogSegNoOffsetToRecPtr(oldest_segno, 0, wal_segment_size,
 									unsummarized_lsn);
 
@@ -820,6 +824,7 @@ HandleWalSummarizerInterrupts(void)
  * occurred and reach the redo pointer of that checkpoint, but sometimes
  * we stop for other reasons, such as a timeline switch.
  */
+// 在单个时间线上汇总一系列 WAL 记录
 static XLogRecPtr
 SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 			 XLogRecPtr switch_lsn, XLogRecPtr maximum_lsn)
@@ -842,6 +847,7 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 	private_data->read_upto = maximum_lsn;
 
 	/* Create xlogreader. */
+	/* 创建 xlog 读取器 */
 	xlogreader = XLogReaderAllocate(wal_segment_size, NULL,
 									XL_ROUTINE(.page_read = &summarizer_read_local_xlog_page,
 											   .segment_open = &wal_segment_open,
@@ -937,6 +943,8 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 		HandleWalSummarizerInterrupts();
 
 		/* We shouldn't go backward. */
+		/* 我们不应该倒退 */
+		// 确保一直递增
 		Assert(summary_start_lsn <= xlogreader->EndRecPtr);
 
 		/* Now read the next record. */
@@ -1029,6 +1037,8 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 		 * summary file yet, then stopping doesn't make any sense, and we
 		 * should wait until the next stop point instead.
 		 */
+		// 如果我们被告知是时候结束这个 WAL 摘要文件了，那就这样做吧。 
+		// 作为例外，如果此 WAL 摘要文件中尚未包含任何内容，则停止没有任何意义，我们应该等到下一个停止点。
 		if (stop_requested && xlogreader->ReadRecPtr > summary_start_lsn)
 		{
 			summary_end_lsn = xlogreader->ReadRecPtr;
@@ -1076,7 +1086,9 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 	}
 
 	/* Destroy xlogreader. */
+	// 释放私有数据
 	pfree(xlogreader->private_data);
+	// 释放读者
 	XLogReaderFree(xlogreader);
 
 	/*
@@ -1087,6 +1099,7 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 	if (summary_end_lsn > summary_start_lsn)
 	{
 		/* Generate temporary and final path name. */
+		/* 生成临时和最终路径名。 */
 		snprintf(temp_path, MAXPGPATH,
 				 XLOGDIR "/summaries/temp.summary");
 		snprintf(final_path, MAXPGPATH,
@@ -1126,6 +1139,7 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 /*
  * Special handling for WAL records with RM_DBASE_ID.
  */
+// 对带有 RM_DBASE_ID 的 WAL 记录的特殊处理。
 static void
 SummarizeDbaseRecord(XLogReaderState *xlogreader, BlockRefTable *brtab)
 {
@@ -1310,6 +1324,8 @@ SummarizeXlogRecord(XLogReaderState *xlogreader)
 		 * This is an LSN at which redo might begin, so we'd like
 		 * summarization to stop just before this WAL record.
 		 */
+		// 这是重做可能开始的 LSN，
+		// 因此我们希望汇总在此 WAL 记录之前停止。
 		return true;
 	}
 

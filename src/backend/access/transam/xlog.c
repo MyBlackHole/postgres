@@ -517,6 +517,7 @@ typedef struct XLogCtlData
 	 * and xlblocks values certainly do.  xlblocks values are protected by
 	 * WALBufMappingLock.
 	 */
+	// 未写入 XLOG 页的缓冲区
 	char	   *pages;			/* buffers for unwritten XLOG pages */
 	pg_atomic_uint64 *xlblocks; /* 1st byte ptr-s + XLOG_BLCKSZ */
 	int			XLogCacheBlck;	/* highest allocated xlog buffer index */
@@ -1253,6 +1254,7 @@ ReserveXLogSwitch(XLogRecPtr *StartPos, XLogRecPtr *EndPos, XLogRecPtr *PrevPtr)
  * Subroutine of XLogInsertRecord.  Copies a WAL record to an already-reserved
  * area in the WAL.
  */
+// 将 WAL 记录复制到 WAL 中已保留的区域。
 static void
 CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 					XLogRecPtr StartPos, XLogRecPtr EndPos, TimeLineID tli)
@@ -1275,6 +1277,7 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 	 * there should be enough space for at least the first field (xl_tot_len)
 	 * on this page.
 	 */
+	// 起码留一个 4 字节大小
 	Assert(freespace >= sizeof(uint32));
 
 	/* Copy record data */
@@ -1289,11 +1292,18 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 			/*
 			 * Write what fits on this page, and continue on the next page.
 			 */
+			// 写下适合本页的内容，然后继续下一页。
+			// 肯定大于等 SizeOfXLogShortPHD
+			// 因为每个页都必须有页眉
 			Assert(CurrPos % XLOG_BLCKSZ >= SizeOfXLogShortPHD || freespace == 0);
 			memcpy(currpos, rdata_data, freespace);
+			// 移动数据指针
 			rdata_data += freespace;
+			// 减少剩余空间
 			rdata_len -= freespace;
+			// 写入的长度增加
 			written += freespace;
+			// 更新当前位置
 			CurrPos += freespace;
 
 			/*
@@ -1341,6 +1351,10 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 	 * we also have to consume all the remaining space in the WAL segment.  We
 	 * have already reserved that space, but we need to actually fill it.
 	 */
+	// 如果这是一个 xlog-switch，
+	// 仅仅写入 switch 记录是不够的，
+	// 我们还必须消耗WAL段中所有剩余的空间。
+	// 我们已经预留了该空间，但我们需要实际填充它。
 	if (isLogSwitch && XLogSegmentOffset(CurrPos, wal_segment_size) != 0)
 	{
 		/* An xlog-switch record doesn't contain any data besides the header */
@@ -1388,6 +1402,7 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 	else
 	{
 		/* Align the end position, so that the next record starts aligned */
+		/* 对齐结束位置，以便下一条记录开始对齐 */
 		CurrPos = MAXALIGN64(CurrPos);
 	}
 
@@ -3987,6 +4002,7 @@ RemoveNonParentXlogFiles(XLogRecPtr switchpoint, TimeLineID newTLI)
 
 	/*
 	 * Construct a filename of the last segment to be kept.
+	 * 构造要保留的最后一段的文件名。
 	 */
 	XLogFileName(switchseg, newTLI, switchLogSegNo, wal_segment_size);
 
@@ -4015,6 +4031,8 @@ RemoveNonParentXlogFiles(XLogRecPtr switchpoint, TimeLineID newTLI)
 			 * not part of our timeline history are not required for recovery
 			 * - but seems safer to let them be archived and removed later.
 			 */
+			// 但是，如果该文件已被标记为 .ready，请勿将其删除。 
+			// 删除它应该没问题 - 不属于我们时间线历史记录的文件不需要恢复 - 但让它们存档并稍后删除似乎更安全。
 			if (!XLogArchiveIsReady(xlde->d_name))
 				RemoveXlogFile(xlde, recycleSegNo, &endLogSegNo, newTLI);
 		}
@@ -5192,6 +5210,7 @@ BootStrapXLOG(void)
 	WriteControlFile();
 
 	/* Bootstrap the commit log, too */
+	/* 引导提交日志 */
 	BootStrapCLOG();
 	BootStrapCommitTs();
 	BootStrapSUBTRANS();
@@ -5633,6 +5652,8 @@ StartupXLOG(void)
 	 * Startup MultiXact. We need to do this early to be able to replay
 	 * truncations.
 	 */
+	// 启动 MultiXact。
+	// 我们需要尽早执行此操作，以便能够重放截断。
 	StartupMultiXact();
 
 	/*
@@ -8060,7 +8081,8 @@ XLogPutNextOid(Oid nextOid)
  * 
  * 这里我们只是盲目地发出XLogInsert请求来记录。 所有的魔力都发生在 XLogInsert 内部。
  * 
- * 返回值要么是 switch 记录的 end+1 地址，要么是前一个段的 end+1 地址（如果我们不需要写入 switch 记录，因为我们已经在段开始处）。
+ * 返回值要么是 switch 记录的 end+1 地址，
+ * 要么是前一个段的 end+1 地址（如果我们不需要写入 switch 记录，因为我们已经在段开始处）。
  */
 XLogRecPtr
 RequestXLogSwitch(bool mark_unimportant)

@@ -314,6 +314,7 @@ typedef struct xl_overwrite_contrecord
 } xl_overwrite_contrecord;
 
 /* End of recovery mark, when we don't do an END_OF_RECOVERY checkpoint */
+/* 恢复结束标记，当我们不执行 END_OF_RECOVERY 检查点时 */
 typedef struct xl_end_of_recovery
 {
 	TimestampTz end_time;

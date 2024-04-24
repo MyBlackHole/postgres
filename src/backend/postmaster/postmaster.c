@@ -1006,6 +1006,8 @@ PostmasterMain(int argc, char *argv[])
 	 * 注意：如果使用 SysV shmem 和/或 semas
 	 * 每个 postmaster 启动通常会选择相同的 IPC 密钥
 	 * 这有助于确保如果 postmaster 崩溃并重新启动，我们将清理死的 IPC 对象。
+	 *
+	 * xact 初始化
 	 */
 	CreateSharedMemoryAndSemaphores();
 
@@ -1402,6 +1404,7 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * We're ready to rock and roll...
 	 */
+	// 我们已经准备好摇滚了
 	StartupPID = StartChildProcess(B_STARTUP);
 	Assert(StartupPID != 0);
 	StartupStatus = STARTUP_RUNNING;

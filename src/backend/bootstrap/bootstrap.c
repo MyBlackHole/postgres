@@ -195,6 +195,7 @@ CheckerModeMain(void)
  *	 to shared memory sizing, options work (or at least do not cause an error
  *	 up to shared memory creation).
  */
+// 以引导模式运行后端的主要入口点
 void
 BootstrapModeMain(int argc, char *argv[], bool check_only)
 {
@@ -326,6 +327,7 @@ BootstrapModeMain(int argc, char *argv[], bool check_only)
 
 	/*
 	 * Do backend-like initialization for bootstrap mode
+	 * 对引导模式进行类似后端的初始化
 	 */
 	InitProcess();
 

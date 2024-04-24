@@ -50,6 +50,7 @@ typedef struct WALOpenSegment
 } WALOpenSegment;
 
 /* WALSegmentContext carries context information about WAL segments to read */
+/* 携带要读取的 WAL 段的上下文信息 */
 typedef struct WALSegmentContext
 {
 	char		ws_dir[MAXPGPATH];

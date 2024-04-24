@@ -220,6 +220,7 @@ typedef struct TransamVariablesData
 	 * These fields are protected by XidGenLock.
 	 * 这些字段受 XidGenLock 保护。
 	 */
+	// 下一个要分配的 XID
 	FullTransactionId nextXid;	/* next XID to assign */
 
 	// 集群最小最旧的未清理的事务 id
