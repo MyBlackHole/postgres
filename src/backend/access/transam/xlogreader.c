@@ -2048,6 +2048,8 @@ XLogRecGetBlockTag(XLogReaderState *record, uint8 block_id,
  * *forknum, *blknum and *prefetch_buffer are filled in (if not NULL), and
  * returns true.  Otherwise returns false.
  */
+// 返回有关块引用所引用的块的信息，
+// 可选地包括该块可能已位于的缓冲区。
 bool
 XLogRecGetBlockTagExtended(XLogReaderState *record, uint8 block_id,
 						   RelFileLocator *rlocator, ForkNumber *forknum,

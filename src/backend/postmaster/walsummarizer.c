@@ -1038,7 +1038,8 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 		 * should wait until the next stop point instead.
 		 */
 		// 如果我们被告知是时候结束这个 WAL 摘要文件了，那就这样做吧。 
-		// 作为例外，如果此 WAL 摘要文件中尚未包含任何内容，则停止没有任何意义，我们应该等到下一个停止点。
+		// 作为例外，如果此 WAL 摘要文件中尚未包含任何内容，
+		// 则停止没有任何意义，我们应该等到下一个停止点。
 		if (stop_requested && xlogreader->ReadRecPtr > summary_start_lsn)
 		{
 			summary_end_lsn = xlogreader->ReadRecPtr;
@@ -1258,6 +1259,7 @@ SummarizeSmgrRecord(XLogReaderState *xlogreader, BlockRefTable *brtab)
 /*
  * Special handling for WAL records with RM_XACT_ID.
  */
+// 对具有 RM_XACT_ID 的 WAL 记录的特殊处理。
 static void
 SummarizeXactRecord(XLogReaderState *xlogreader, BlockRefTable *brtab)
 {
@@ -1412,6 +1414,8 @@ summarizer_read_local_xlog_page(XLogReaderState *state,
 					 * The timeline we're scanning is no longer the latest
 					 * one. Figure out when it ended.
 					 */
+					// 我们正在扫描的时间线不再是最新的。 
+					// 弄清楚什么时候结束。
 					private_data->historic = true;
 					switchpoint = tliSwitchPoint(private_data->tli, tles,
 												 NULL);
@@ -1495,6 +1499,7 @@ summarizer_wait_for_wal(void)
 	}
 
 	/* OK, now sleep. */
+	/* 好的，现在睡觉。 */
 	(void) WaitLatch(MyLatch,
 					 WL_LATCH_SET | WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,
 					 sleep_quanta * MS_PER_SLEEP_QUANTUM,

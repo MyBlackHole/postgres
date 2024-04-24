@@ -1,5 +1,16 @@
-2024-04-24 10:33:41.248 CST [1941300] LOG:  starting PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 13.2.1 20230801, 64-bit
-2024-04-24 10:33:41.249 CST [1941300] LOG:  listening on IPv6 address "::1", port 5432
-2024-04-24 10:33:41.249 CST [1941300] LOG:  listening on IPv4 address "127.0.0.1", port 5432
-2024-04-24 10:33:41.252 CST [1941300] FATAL:  could not create lock file "/run/postgresql/.s.PGSQL.5432.lock": No such file or directory
-2024-04-24 10:33:41.254 CST [1941300] LOG:  database system is shut down
+2024-04-24 10:51:57.236 CST [2100605] LOG:  checkpoint starting: time
+2024-04-24 10:55:26.885 CST [2100605] LOG:  checkpoint complete: wrote 2093 buffers (12.8%); 0 WAL file(s) added, 0 removed, 8 recycled; write=209.594 s, sync=0.013 s, total=209.649 s; sync files=63, longest=0.004 s, average=0.001 s; distance=126163 kB, estimate=126163 kB; lsn=0/901E220, redo lsn=0/901E190
+2024-04-24 11:32:01.939 CST [2106401] ERROR:  relation "pg_xact" does not exist at character 15
+2024-04-24 11:32:01.939 CST [2106401] STATEMENT:  select * from pg_xact;
+2024-04-24 11:45:37.199 CST [2100604] LOG:  received SIGHUP, reloading configuration files
+2024-04-24 11:45:37.209 CST [2100604] LOG:  parameter "summarize_wal" changed to "on"
+2024-04-24 12:11:58.092 CST [2100605] LOG:  checkpoint starting: time
+2024-04-24 12:15:24.139 CST [2100605] LOG:  checkpoint complete: wrote 2053 buffers (12.5%); 0 WAL file(s) added, 0 removed, 7 recycled; write=205.997 s, sync=0.012 s, total=206.047 s; sync files=48, longest=0.004 s, average=0.001 s; distance=125937 kB, estimate=126140 kB; lsn=0/10B1A6D0, redo lsn=0/10B1A640
+2024-04-24 12:21:58.275 CST [2106401] ERROR:  could not open file "pg_wal/summaries/0000000100000000090002D00000000010B1A640.summary": No such file or directory
+2024-04-24 12:21:58.275 CST [2106401] STATEMENT:  select pg_wal_summary_contents(1,'0/90002D0','0/10B1A640') limit 10;
+2024-04-24 18:58:37.541 CST [2100604] LOG:  received smart shutdown request
+2024-04-24 18:58:37.548 CST [2100604] LOG:  background worker "logical replication launcher" (PID 2100610) exited with exit code 1
+2024-04-24 18:58:37.548 CST [2100605] LOG:  shutting down
+2024-04-24 18:58:37.551 CST [2100605] LOG:  checkpoint starting: shutdown immediate
+2024-04-24 18:58:37.569 CST [2100605] LOG:  checkpoint complete: wrote 1 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.003 s, total=0.021 s; sync files=1, longest=0.003 s, average=0.003 s; distance=0 kB, estimate=113526 kB; lsn=0/10B1A780, redo lsn=0/10B1A780
+2024-04-24 18:58:37.579 CST [2100604] LOG:  database system is shut down

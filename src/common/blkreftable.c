@@ -549,6 +549,7 @@ BlockRefTableEntryGetBlocks(BlockRefTableEntry *entry,
 /*
  * Serialize a block reference table to a file.
  */
+// 将块引用表序列化到文件。
 void
 WriteBlockRefTable(BlockRefTable *brtab,
 				   io_callback_fn write_callback,
@@ -1036,10 +1037,12 @@ BlockRefTableEntrySetLimitBlock(BlockRefTableEntry *entry,
 	BlockRefTableChunk limit_chunk;
 
 	/* If we already have an equal or lower limit block, do nothing. */
+	/* 如果我们已经有一个等于或下限块，则不执行任何操作。 */
 	if (limit_block >= entry->limit_block)
 		return;
 
 	/* Record the new limit block value. */
+	/* 记录新的限制块值。 */
 	entry->limit_block = limit_block;
 
 	/*
@@ -1072,6 +1075,7 @@ BlockRefTableEntrySetLimitBlock(BlockRefTableEntry *entry,
 		unsigned	chunkoffset;
 
 		/* It's a bitmap. Unset bits. */
+		/* 这是一个位图。 未设置位。 */
 		for (chunkoffset = limit_chunkoffset; chunkoffset < BLOCKS_PER_CHUNK;
 			 ++chunkoffset)
 			limit_chunk[chunkoffset / BLOCKS_PER_ENTRY] &=
@@ -1255,7 +1259,8 @@ BlockRefTableEntryMarkBlockModified(BlockRefTableEntry *entry,
 	 * bitmap, but we do need to add a new element. If there's not enough
 	 * room, we'll have to expand the array.
 	 *
-	 * 好的，我们目前有一个数组，我们不需要转换为位图，但我们确实需要添加一个新元素。
+	 * 好的，我们目前有一个数组，我们不需要转换为位图，
+	 * 但我们确实需要添加一个新元素。
 	 * 如果没有足够的空间，我们就必须扩展阵列。
 	 */
 	if (entry->chunk_usage[chunkno] == entry->chunk_size[chunkno])

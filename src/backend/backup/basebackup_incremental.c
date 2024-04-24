@@ -328,9 +328,9 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	int			num_wal_ranges;
 	int			i;
 	bool		found_backup_start_tli = false;
-	// 备份清单最早时间线
+	// 上一次备份清单最早时间线
 	TimeLineID	earliest_wal_range_tli = 0;
-	// 备份清单最早时间线开始 lsn
+	// 上一次备份清单最早时间线开始 lsn
 	XLogRecPtr	earliest_wal_range_start_lsn = InvalidXLogRecPtr;
 	TimeLineID	latest_wal_range_tli = 0;
 	XLogRecPtr	summarized_lsn;
@@ -433,7 +433,7 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * 如果备份需要来自不在我们历史记录中的时间线的 WAL，
 		 * 那么情况绝对不是这样。
 		 */
-		// 没有找到公共历史了，完蛋了只能增量了
+		// 没有找到公共历史了，完蛋了只能全量了
 		if (tlep[i] == NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
@@ -499,17 +499,21 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 	 *
 	 * 健全性检查清单中 WAL 范围的开始和结束 LSN。
 	 *
-	 * 通常，在之前的备份期间根本不会有任何时间线切换，但如果有的话，它们应该发生在该服务器切换时间线的相同 LSN 上。
+	 * 通常，在之前的备份期间根本不会有任何时间线切换，但如果有的话，
+	 * 它们应该发生在该服务器切换时间线的相同 LSN 上。
 	 *
-	 * 无论之前的备份期间是否存在任何时间线切换，之前的备份都不应要求该时间线开始之前的时间线中的任何 WAL。
+	 * 无论之前的备份期间是否存在任何时间线切换，
+	 * 之前的备份都不应要求该时间线开始之前的时间线中的任何 WAL。
 	 * 在此备份开始之后，它也不应该需要任何 WAL。
 	 *
-	 * 如果这些健全性检查中的任何一个失败，一种可能的解释是用户在同一时间线上使用相同的 LSN 多次生成 WAL。
+	 * 如果这些健全性检查中的任何一个失败，
+	 * 一种可能的解释是用户在同一时间线上使用相同的 LSN 多次生成 WAL。
 	 *
 	 * 例如，如果在时间线 1 上运行的两个备用数据库都被升级并且（由于归档设置损坏）都选择了新的时间线 ID 2，
 	 * 则这些检查之一可能会失败。
 	 * 请注意，用户有很多方法可以在不触发任何这些检查的情况下做一些非常糟糕的事情，并且它们并不旨在全面。
-	 * 很难看出我们如何能够确定这里的任何事情。 但是，如果问题摆在我们面前，最好报告，我们也会这样做。
+	 * 很难看出我们如何能够确定这里的任何事情。 
+	 * 但是，如果问题摆在我们面前，最好报告，我们也会这样做。
 	 */
 	for (i = 0; i < num_wal_ranges; ++i)
 	{
@@ -782,7 +786,8 @@ PrepareForIncrementalBackup(IncrementalBackupInfo *ib,
 		 * 请记住，我们需要阅读这些摘要。
 		 *
 		 * 从技术上讲，这可能会读取比所需更多的文件，因为 tli_wslist 理论上可能包含冗余摘要。
-		 * 例如，如果我们有一个从 0/10000000 到 0/20000000 的摘要，还有一个从 0/00000000 到 0/30000000 的摘要，那么后者包含前者，而前者可以被忽略。
+		 * 例如，如果我们有一个从 0/10000000 到 0/20000000 的摘要，
+		 * 还有一个从 0/00000000 到 0/30000000 的摘要，那么后者包含前者，而前者可以被忽略。
 		 * 真的有这情况?
 		 *
 		 * 我们忽略这种可能性，因为 WAL 摘要器仅尝试生成不重叠的摘要。
