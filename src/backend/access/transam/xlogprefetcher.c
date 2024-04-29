@@ -124,6 +124,7 @@ typedef struct LsnReadQueue
 struct XLogPrefetcher
 {
 	/* WAL reader and current reading state. */
+	/* WAL 读取器和当前读取状态。 */
 	XLogReaderState *reader;
 	DecodedXLogRecord *record;
 	int			next_block_id;
@@ -965,14 +966,17 @@ void
 XLogPrefetcherBeginRead(XLogPrefetcher *prefetcher, XLogRecPtr recPtr)
 {
 	/* This will forget about any in-flight IO. */
+	/* 这将忘记任何正在进行的 IO。 */
 	prefetcher->reconfigure_count--;
 
 	/* Book-keeping to avoid readahead on first read. */
+	/* 簿记以避免第一次读取时预读。 */
 	prefetcher->begin_ptr = recPtr;
 
 	prefetcher->no_readahead_until = 0;
 
 	/* This will forget about any queued up records in the decoder. */
+	/* 这将忘记解码器中任何排队的记录。 */
 	XLogBeginRead(prefetcher->reader, recPtr);
 }
 

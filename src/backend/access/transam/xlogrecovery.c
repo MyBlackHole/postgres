@@ -285,6 +285,16 @@ static TimeLineID receiveTLI = 0;
  * file.  But this copy of minRecoveryPoint variable reflects the value at the
  * beginning of recovery, and is *not* updated after consistency is reached.
  */
+// 控制文件中的 minRecoveryPoint 和 backupEndPoint 的副本。
+//
+// 为了达到一致性，我们必须重播 WAL 直到 minRecoveryPoint。 
+// 如果 backupEndRequired 为 true，则我们还必须到达 backupEndPoint，
+// 或者如果无效，则必须到达与 backupStartPoint 对应的备份结束记录。
+//
+// 注意：在归档恢复中，达到一致性后，
+// xlog.c 中的函数将开始更新控制文件中的 minRecoveryPoint。 
+// 但是 minRecoveryPoint 变量的这个副本反映了恢复开始时的值，
+// 并且在达到一致性后“不”更新。
 static XLogRecPtr minRecoveryPoint;
 static TimeLineID minRecoveryPointTLI;
 
@@ -301,6 +311,13 @@ static bool backupEndRequired = false;
  * the WAL has been replayed up to a certain point, and importantly, there
  * is no trace of later actions on disk.
  */
+// 我们是否达到了一致的数据库状态？ 
+// 在崩溃恢复中，我们必须重放所有的WAL，
+// 因此永远不会设置达到的一致性。
+// 在归档恢复期间，一旦达到 minRecoveryPoint，数据库就会保持一致。
+//
+// 一致状态意味着系统内部是一致的，所有 WAL 都已重播到某个点，
+// 而且重要的是，磁盘上没有后续操作的痕迹。
 bool		reachedConsistency = false;
 
 /* Buffers dedicated to consistency checks of size BLCKSZ */
@@ -638,6 +655,8 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		 * When a backup_label file is present, we want to roll forward from
 		 * the checkpoint it identifies, rather than using pg_control.
 		 */
+		// 当存在 backup_label 文件时，
+		// 我们希望从它标识的检查点前滚，而不是使用 pg_control。
 		record = ReadCheckpointRecord(xlogprefetcher, CheckPointLoc,
 									  CheckPointTLI);
 		if (record != NULL)
@@ -1678,6 +1697,7 @@ void
 PerformWalRecovery(void)
 {
 	XLogRecord *record;
+	// 达到恢复目标
 	bool		reachedRecoveryTarget = false;
 	TimeLineID	replayTLI;
 
@@ -1871,6 +1891,7 @@ PerformWalRecovery(void)
 
 		/*
 		 * end of main redo apply loop
+		 * 主重做应用循环结束
 		 */
 
 		if (reachedRecoveryTarget)
@@ -2086,6 +2107,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	}
 
 	/* Allow read-only connections if we're consistent now */
+	/* 如果我们现在保持一致，则允许只读连接 */
 	CheckRecoveryConsistency();
 
 	/* Is this a timeline switch? */
@@ -2265,6 +2287,10 @@ CheckRecoveryConsistency(void)
 	 * XLOG_BACKUP_END arrives to advise us of the correct minRecoveryPoint.
 	 * All we know prior to that is that we're not consistent yet.
 	 */
+	// 我们已经过了安全起点了吗？ 请注意，
+	// 如果从备份恢复，则已知 minRecoveryPoint 设置不正确，
+	// 直到 XLOG_BACKUP_END 到达并告知我们正确的 minRecoveryPoint。 
+	// 在此之前我们所知道的是我们还不一致。
 	if (!reachedConsistency && !backupEndRequired &&
 		minRecoveryPoint <= lastReplayedEndRecPtr)
 	{
@@ -3266,6 +3292,7 @@ ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
 		if (record)
 		{
 			/* Great, got a record */
+			/* 太棒了，有记录了 */
 			return record;
 		}
 		else
