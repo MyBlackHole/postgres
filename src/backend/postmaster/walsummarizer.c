@@ -1277,6 +1277,7 @@ SummarizeXactRecord(XLogReaderState *xlogreader, BlockRefTable *brtab)
 		 * Don't track modified blocks for any relations that were removed on
 		 * commit.
 		 */
+		// 不要跟踪提交时删除的任何关系数据的修改块。
 		ParseCommitRecord(XLogRecGetInfo(xlogreader), xlrec, &parsed);
 		for (i = 0; i < parsed.nrels; ++i)
 		{
@@ -1299,6 +1300,7 @@ SummarizeXactRecord(XLogReaderState *xlogreader, BlockRefTable *brtab)
 		 * Don't track modified blocks for any relations that were removed on
 		 * abort.
 		 */
+		// 不要跟踪提交时删除的任何关系数据的修改块。
 		ParseAbortRecord(XLogRecGetInfo(xlogreader), xlrec, &parsed);
 		for (i = 0; i < parsed.nrels; ++i)
 		{

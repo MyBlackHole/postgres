@@ -31,11 +31,3 @@ OBJS = \
 	walsummaryfuncs.o
 
 include $(top_srcdir)/src/backend/common.mk
-
-OBJS_BACKUP = $(OBJS)
-
-libpgbackup.a: $(OBJS_BACKUP)
-	rm -f $@
-	$(AR) $(AROPT) $@ $^
-
-all: libpgbackup.a

@@ -54,7 +54,7 @@ typedef Oid RelFileNumber;
 typedef enum ForkNumber
 {
 	InvalidForkNumber = -1,
-	// 主叉数量
+	// 主叉号
 	MAIN_FORKNUM = 0,
 	// FSM (空闲空间映射表)
 	// 叉数量
