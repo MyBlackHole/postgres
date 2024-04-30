@@ -1011,6 +1011,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		 * Any other state indicates that the backup somehow became corrupted
 		 * and we can't sensibly continue with recovery.
 		 */
+		// 如果我们要从基本备份开始恢复，请设置 backupStartPoint。
 		if (haveBackupLabel)
 		{
 			ControlFile->backupStartPoint = checkPoint.redo;
@@ -1312,6 +1313,9 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 	 * will have reached consistency and backupEndRequired will be reset to be
 	 * false).
 	 */
+	// BACKUP METHOD 让我们知道这是否是一个典型的备份（“流式”，这可能意味着使用了 pg_basebackup 或 pg_backup_start/stop 方法），
+	// 或者这个标签是否来自其他地方（今天唯一的其他选项来自 pg_rewind）。 
+	// 如果这是一个流式备份，那么我们知道我们需要播放直到到达备份期间生成的 WAL 的末尾（此时我们将达到一致性，并且 backupEndRequired 将重置为 false）。
 	if (fscanf(lfp, "BACKUP METHOD: %19s\n", backuptype) == 1)
 	{
 		if (strcmp(backuptype, "streamed") == 0)
@@ -1323,6 +1327,8 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 	 * it was from a standby, we'll double-check that the control file state
 	 * matches that of a standby.
 	 */
+	// BACKUP FROM 让我们知道这是来自主数据库还是备用数据库。 
+	// 如果它来自备用数据库，我们将仔细检查控制文件状态是否与备用数据库的状态匹配。
 	if (fscanf(lfp, "BACKUP FROM: %19s\n", backupfrom) == 1)
 	{
 		if (strcmp(backupfrom, "standby") == 0)
@@ -1740,6 +1746,7 @@ PerformWalRecovery(void)
 	/*
 	 * Allow read-only connections immediately if we're consistent already.
 	 */
+	// 如果我们已经保持一致，请立即允许只读连接。
 	CheckRecoveryConsistency();
 
 	/*
@@ -3338,6 +3345,7 @@ ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
 			}
 
 			/* In standby mode, loop back to retry. Otherwise, give up. */
+			/* 待机模式下，循环返回重试。 否则，放弃。 */
 			if (StandbyMode && !CheckForStandbyTrigger())
 				continue;
 			else
