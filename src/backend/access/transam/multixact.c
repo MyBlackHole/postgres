@@ -2113,6 +2113,7 @@ StartupMultiXact(void)
 
 	/*
 	 * Initialize offset's idea of the latest page number.
+	 * 初始化偏移量的最新页码的概念。
 	 */
 	pageno = MultiXactIdToOffsetPage(multi);
 	pg_atomic_write_u64(&MultiXactOffsetCtl->shared->latest_page_number,

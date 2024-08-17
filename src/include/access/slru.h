@@ -8,6 +8,8 @@
  *
  * src/include/access/slru.h
  *
+ * 事务状态日志文件的简单 LRU 缓冲
+ *
  *-------------------------------------------------------------------------
  */
 #ifndef SLRU_H
@@ -134,6 +136,7 @@ typedef struct SlruCtlData
 
 	/*
 	 * Bitmask to determine bank number from page number.
+	 * 根据页码确定银行编号的位掩码。
 	 */
 	bits16		bank_mask;
 

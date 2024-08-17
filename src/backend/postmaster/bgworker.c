@@ -110,6 +110,7 @@ static BackgroundWorkerArray *BackgroundWorkerData;
 /*
  * List of internal background worker entry points.  We need this for
  * reasons explained in LookupBackgroundWorkerFunction(), below.
+ *
  * 内部后台工作者入口点列表。
  * 我们需要这个的原因在下面的 LookupBackgroundWorkerFunction() 中解释。
  */

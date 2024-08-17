@@ -3267,6 +3267,8 @@ apply_handle_truncate(StringInfo s)
 
 /*
  * Logical replication protocol message dispatcher.
+ *
+ * 逻辑复制协议消息调度程序。
  */
 void
 apply_dispatch(StringInfo s)

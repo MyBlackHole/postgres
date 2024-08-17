@@ -244,6 +244,7 @@ CreateSharedMemoryAndSemaphores(void)
 
 	/* Initialize subsystems */
 	// 初始化子系统
+	// 例如: xact
 	CreateOrAttachShmemStructs();
 
 #ifdef EXEC_BACKEND

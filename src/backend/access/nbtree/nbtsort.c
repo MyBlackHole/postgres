@@ -288,6 +288,8 @@ static void _bt_parallel_scan_and_sort(BTSpool *btspool, BTSpool *btspool2,
 
 /*
  *	btbuild() -- build a new btree index.
+ *
+ *	构建一个新的btree索引。
  */
 IndexBuildResult *
 btbuild(Relation heap, Relation index, IndexInfo *indexInfo)

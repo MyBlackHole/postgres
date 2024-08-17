@@ -3017,6 +3017,8 @@ index_build(Relation heapRelation,
 
 	/*
 	 * Call the access method's build procedure
+	 *
+	 * 调用访问方法的构建过程
 	 */
 	stats = indexRelation->rd_indam->ambuild(heapRelation, indexRelation,
 											 indexInfo);

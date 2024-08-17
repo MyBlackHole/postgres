@@ -2797,6 +2797,10 @@ ChooseIndexColumnNames(const List *indexElems)
  * preparation wrapper for the real operations that will happen in
  * each subroutine of REINDEX.
  */
+/*
+ * 手动 REINDEX 命令的主要入口点。 
+ * 这主要是 REINDEX 每个子例程中将发生的实际操作的准备包装。
+ */
 void
 ExecReindex(ParseState *pstate, const ReindexStmt *stmt, bool isTopLevel)
 {
@@ -2891,6 +2895,8 @@ ExecReindex(ParseState *pstate, const ReindexStmt *stmt, bool isTopLevel)
 /*
  * ReindexIndex
  *		Recreate a specific index.
+ *
+ * 重新创建特定索引
  */
 static void
 ReindexIndex(const ReindexStmt *stmt, const ReindexParams *params, bool isTopLevel)

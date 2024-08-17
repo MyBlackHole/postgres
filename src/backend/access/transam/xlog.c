@@ -5645,7 +5645,8 @@ StartupXLOG(void)
 	 * been initialized and before we accept connections or begin WAL replay.
 	 */
 	// 启动堵塞。
-	// 这必须在 TransamVariables->nextXid 初始化之后、我们接受连接或开始 WAL 重放之前完成.
+	// 这必须在 TransamVariables->nextXid 初始化之后、
+	// 我们接受连接或开始 WAL 重放之前完成.
 	StartupCLOG();
 
 	/*
