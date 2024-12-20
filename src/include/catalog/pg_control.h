@@ -84,16 +84,20 @@ typedef struct CheckPoint
 
 /* XLOG info values for XLOG rmgr */
 /* XLOG rmgr 的 XLOG 信息值 */
+
+/* checkpoint 创建结束 */
 #define XLOG_CHECKPOINT_SHUTDOWN		0x00
 #define XLOG_CHECKPOINT_ONLINE			0x10
 #define XLOG_NOOP						0x20
 #define XLOG_NEXTOID					0x30
 // 切换 xlog 文件
 #define XLOG_SWITCH						0x40
+/* 备份结束 */
 #define XLOG_BACKUP_END					0x50
 #define XLOG_PARAMETER_CHANGE			0x60
 #define XLOG_RESTORE_POINT				0x70
 #define XLOG_FPW_CHANGE					0x80
+/* 恢复结束 */
 #define XLOG_END_OF_RECOVERY			0x90
 #define XLOG_FPI_FOR_HINT				0xA0
 #define XLOG_FPI						0xB0
@@ -196,6 +200,7 @@ typedef struct ControlFileData
 	 * start up.
 	 */
 	// 最小恢复点
+	// 没有时会使用检查点记录的 redo 指针
 	XLogRecPtr	minRecoveryPoint;
 	// 最小恢复点时间线
 	TimeLineID	minRecoveryPointTLI;

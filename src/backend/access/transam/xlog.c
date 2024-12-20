@@ -2762,6 +2762,11 @@ XLogGetReplicationSlotMinimumLSN(void)
  *
  * If 'force' is true, 'lsn' argument is ignored. Otherwise, minRecoveryPoint
  * is only updated if it's not already greater than or equal to 'lsn'.
+ *
+ * 在控制文件中推进 minRecoveryPoint。
+ * 如果我们在恢复期间崩溃，我们必须再次达到此点，然后数据库才能保持一致。
+ * 如果“force”为真，则“lsn”参数将被忽略。
+ * 否则，只有当 minRecoveryPoint 不大于或等于“lsn”时，才会更新 minRecoveryPoint。
  */
 static void
 UpdateMinRecoveryPoint(XLogRecPtr lsn, bool force)
@@ -7001,6 +7006,10 @@ CreateCheckPoint(int flags)
 	 * If this isn't a shutdown or forced checkpoint, and if there has been no
 	 * WAL activity requiring a checkpoint, skip it.  The idea here is to
 	 * avoid inserting duplicate checkpoints when the system is idle.
+	 *
+	 * 如果这不是关闭或强制检查点，并且没有需要检查点的 WAL 活动，则跳过它。
+	 * 这里的想法是避免在系统空闲时插入重复的检查点。
+	 *
 	 */
 	if ((flags & (CHECKPOINT_IS_SHUTDOWN | CHECKPOINT_END_OF_RECOVERY |
 				  CHECKPOINT_FORCE)) == 0)
@@ -7018,6 +7027,10 @@ CreateCheckPoint(int flags)
 	 * An end-of-recovery checkpoint is created before anyone is allowed to
 	 * write WAL. To allow us to write the checkpoint record, temporarily
 	 * enable XLogInsertAllowed.
+	 *
+	 * 在允许任何人写入 WAL 之前，会创建恢复结束检查点。
+	 * 为了允许我们写入检查点记录，请暂时启用 XLogInsertAllowed。
+	 *
 	 */
 	if (flags & CHECKPOINT_END_OF_RECOVERY)
 		oldXLogAllowed = LocalSetXLogInsertAllowed();

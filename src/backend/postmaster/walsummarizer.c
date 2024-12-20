@@ -382,6 +382,7 @@ WalSummarizerMain(char *startup_data, size_t startup_data_len)
 		MaybeRemoveOldWalSummaries();
 
 		/* Find the LSN and TLI up to which we can safely summarize. */
+		/* 找到我们可以安全归档的 LSN 和 TLI。 */
 		latest_lsn = GetLatestLSN(&latest_tli);
 
 		/*
@@ -1096,6 +1097,10 @@ SummarizeWAL(TimeLineID tli, XLogRecPtr start_lsn, bool exact,
 	 * If a timeline switch occurs, we may fail to make any progress at all
 	 * before exiting the loop above. If that happens, we don't write a WAL
 	 * summary file at all.
+	 *
+	 * 如果发生时间线切换，我们可能在退出上述循环之前根本无法取得任何进展。
+	 * 如果发生这种情况，我们根本不会写入 WAL 摘要文件。
+	 *
 	 */
 	if (summary_end_lsn > summary_start_lsn)
 	{

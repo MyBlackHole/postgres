@@ -280,10 +280,18 @@ static TimeLineID receiveTLI = 0;
  * backupEndPoint, or if it's invalid, an end-of-backup record corresponding
  * to backupStartPoint.
  *
+ * 为了达到一致性，我们必须重放 WAL 直到 minRecoveryPoint。
+ * 如果 backupEndRequired 为真，我们还必须达到 backupEndPoint，或者如果它无效，
+ * 则必须达到与 backupStartPoint 相对应的备份结束记录。
+ *
  * Note: In archive recovery, after consistency has been reached, the
  * functions in xlog.c will start updating minRecoveryPoint in the control
  * file.  But this copy of minRecoveryPoint variable reflects the value at the
  * beginning of recovery, and is *not* updated after consistency is reached.
+ *
+ *
+ * 注意：在存档恢复中，达到一致性后，xlog.c 中的函数将开始更新控制文件中的 minRecoveryPoint。
+ * 但 minRecoveryPoint 变量的此副本反映的是恢复开始时的值，并且在达到一致性后不会更新。
  */
 // 控制文件中的 minRecoveryPoint 和 backupEndPoint 的副本。
 //
@@ -989,6 +997,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		if (InArchiveRecovery)
 		{
 			/* initialize minRecoveryPoint if not set yet */
+			/* 如果尚未设置，则初始化 minRecoveryPoint */
 			if (ControlFile->minRecoveryPoint < checkPoint.redo)
 			{
 				ControlFile->minRecoveryPoint = checkPoint.redo;
@@ -1314,8 +1323,9 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 	 * false).
 	 */
 	// BACKUP METHOD 让我们知道这是否是一个典型的备份（“流式”，这可能意味着使用了 pg_basebackup 或 pg_backup_start/stop 方法），
-	// 或者这个标签是否来自其他地方（今天唯一的其他选项来自 pg_rewind）。 
-	// 如果这是一个流式备份，那么我们知道我们需要播放直到到达备份期间生成的 WAL 的末尾（此时我们将达到一致性，并且 backupEndRequired 将重置为 false）。
+	// 或者这个标签是否来自其他地方(今天唯一的其他选项来自 pg_rewind).
+	// 如果这是一个流式备份，那么我们知道我们需要播放直到到达备份期间生成的 WAL 的末尾
+	// (此时我们将达到一致性，并且 backupEndRequired 将重置为 false).
 	if (fscanf(lfp, "BACKUP METHOD: %19s\n", backuptype) == 1)
 	{
 		if (strcmp(backuptype, "streamed") == 0)
@@ -1851,6 +1861,8 @@ PerformWalRecovery(void)
 
 			/*
 			 * Have we reached our recovery target?
+			 *
+			 * 我们是否已经达到复苏目标
 			 */
 			if (recoveryStopsBefore(xlogreader))
 			{
@@ -1993,6 +2005,11 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	 * important so that replayEndTLI, which is recorded as the minimum
 	 * recovery point's TLI if recovery stops after this record, is set
 	 * correctly.
+	 *
+	 * 在重放该记录之前，请检查该记录是否导致当前时间线发生变化。
+	 * 该记录已被视为新时间线的一部分，因此我们在重播之前更新 replayTLI。
+	 * 这很重要，因此设置 replayEndTLI（如果在此记录之后恢复停止，则将其记录为最小恢复点的 TLI）正确。
+	 *
 	 */
 	if (record->xl_rmid == RM_XLOG_ID)
 	{
@@ -2002,6 +2019,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 
 		if (info == XLOG_CHECKPOINT_SHUTDOWN)
 		{
+			/* 完成检查点创建 */
 			CheckPoint	checkPoint;
 
 			memcpy(&checkPoint, XLogRecGetData(xlogreader), sizeof(CheckPoint));
@@ -2010,6 +2028,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 		}
 		else if (info == XLOG_END_OF_RECOVERY)
 		{
+			/* 完成恢复操作 */
 			xl_end_of_recovery xlrec;
 
 			memcpy(&xlrec, XLogRecGetData(xlogreader), sizeof(xl_end_of_recovery));
@@ -2025,6 +2044,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 								newReplayTLI, prevReplayTLI, *replayTLI);
 
 			/* Following WAL records should be run with new TLI */
+			/* 以下 WAL 记录应使用新的 TLI 运行 */
 			*replayTLI = newReplayTLI;
 			switchedTLI = true;
 		}
@@ -2124,6 +2144,9 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 		/*
 		 * Before we continue on the new timeline, clean up any (possibly
 		 * bogus) future WAL segments on the old timeline.
+		 *
+		 * 在我们继续新的时间线之前，请清理旧时间线上任何（可能是伪造的）未来的 WAL 段。
+		 *
 		 */
 		RemoveNonParentXlogFiles(xlogreader->EndRecPtr, *replayTLI);
 
@@ -2258,12 +2281,17 @@ CheckRecoveryConsistency(void)
 	/*
 	 * assume that we are called in the startup process, and hence don't need
 	 * a lock to read lastReplayedEndRecPtr
+	 *
+	 * 假设我们在启动过程中被调用，
+	 * 因此不需要锁来读取 lastReplayedEndRecPtr
 	 */
 	lastReplayedEndRecPtr = XLogRecoveryCtl->lastReplayedEndRecPtr;
 	lastReplayedTLI = XLogRecoveryCtl->lastReplayedTLI;
 
 	/*
 	 * Have we reached the point where our base backup was completed?
+	 *
+	 * 我们的基础备份是否已经完成
 	 */
 	if (!XLogRecPtrIsInvalid(backupEndPoint) &&
 		backupEndPoint <= lastReplayedEndRecPtr)
@@ -2296,7 +2324,7 @@ CheckRecoveryConsistency(void)
 	 */
 	// 我们已经过了安全起点了吗？ 请注意，
 	// 如果从备份恢复，则已知 minRecoveryPoint 设置不正确，
-	// 直到 XLOG_BACKUP_END 到达并告知我们正确的 minRecoveryPoint。 
+	// 直到 XLOG_BACKUP_END 到达并告知我们正确的 minRecoveryPoint。
 	// 在此之前我们所知道的是我们还不一致。
 	if (!reachedConsistency && !backupEndRequired &&
 		minRecoveryPoint <= lastReplayedEndRecPtr)
@@ -2445,12 +2473,17 @@ xlog_block_info(StringInfo buf, XLogReaderState *record)
  *
  * 'lsn' is the address of the shutdown checkpoint record we're about to
  * replay. (Currently, timeline can only change at a shutdown checkpoint).
+ *
+ * 检查恢复期间是否可以切换到新时间线。
+ *
+ * “lsn”是我们要重放的关闭检查点记录的地址。 （目前，时间线只能在关闭检查点更改）。
  */
 static void
 checkTimeLineSwitch(XLogRecPtr lsn, TimeLineID newTLI, TimeLineID prevTLI,
 					TimeLineID replayTLI)
 {
 	/* Check that the record agrees on what the current (old) timeline is */
+	/* 检查记录是否与当前（旧）时间线一致 */
 	if (prevTLI != replayTLI)
 		ereport(PANIC,
 				(errmsg("unexpected previous timeline ID %u (current timeline ID %u) in checkpoint record",
@@ -2459,6 +2492,9 @@ checkTimeLineSwitch(XLogRecPtr lsn, TimeLineID newTLI, TimeLineID prevTLI,
 	/*
 	 * The new timeline better be in the list of timelines we expect to see,
 	 * according to the timeline history. It should also not decrease.
+	 *
+	 * 根据时间线历史记录，新时间线应该位于我们期望看到的时间线列表中。也不应该减少。
+	 * 
 	 */
 	if (newTLI < replayTLI || !tliInHistory(newTLI, expectedTLEs))
 		ereport(PANIC,
@@ -3069,6 +3105,7 @@ recoveryApplyDelay(XLogReaderState *record)
 		return false;
 
 	/* no delay is applied on a database not yet consistent */
+	/* 对尚未一致的数据库不应用延迟 */
 	if (!reachedConsistency)
 		return false;
 
